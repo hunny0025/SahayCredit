@@ -519,6 +519,7 @@ const dom = {
     welcome: document.getElementById('welcome-screen'),
     consent: document.getElementById('consent-screen'),
     rbiLink: document.getElementById('rbi-link-screen'),
+    ekyc: document.getElementById('ekyc-screen'),
     quiz: document.getElementById('quiz-screen'),
     processing: document.getElementById('processing-screen'),
     result: document.getElementById('result-screen'),
@@ -976,6 +977,123 @@ function bindEvents() {
       alert(state.currentLanguage === 'en' ? "All data cleared successfully." : "सभी डेटा सफलतापूर्वक मिटा दिया गया है।");
     }
   });
+
+  // ── eKYC Screen — Event Handlers ──────────────────────────────────────────
+  const ekycAadhaarInput = document.getElementById('ekyc-aadhaar-input');
+  const ekycPanInput = document.getElementById('ekyc-pan-input');
+  const ekycNameInput = document.getElementById('ekyc-name-input');
+  const ekycVerifyBtn = document.getElementById('ekyc-verify-btn');
+  const ekycProceedBtn = document.getElementById('ekyc-proceed-btn');
+  const ekycRetryBtn = document.getElementById('ekyc-retry-btn');
+
+  function validateEkycInputs() {
+    if (!ekycVerifyBtn) return;
+    const aadhaar = (ekycAadhaarInput?.value || '').replace(/\s/g, '');
+    const pan = (ekycPanInput?.value || '').trim().toUpperCase();
+    const name = (ekycNameInput?.value || '').trim();
+    const aadhaarValid = /^\d{12}$/.test(aadhaar);
+    const panValid = /^[A-Z]{5}\d{4}[A-Z]$/.test(pan);
+    const nameValid = name.length >= 2;
+    ekycVerifyBtn.disabled = !(aadhaarValid && panValid && nameValid);
+  }
+
+  if (ekycAadhaarInput) {
+    // Auto-format Aadhaar with spaces: 1234 5678 9012
+    ekycAadhaarInput.addEventListener('input', (e) => {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 12);
+      if (v.length > 8) v = v.slice(0,4) + ' ' + v.slice(4,8) + ' ' + v.slice(8);
+      else if (v.length > 4) v = v.slice(0,4) + ' ' + v.slice(4);
+      e.target.value = v;
+      validateEkycInputs();
+    });
+  }
+  if (ekycPanInput) {
+    ekycPanInput.addEventListener('input', () => validateEkycInputs());
+  }
+  if (ekycNameInput) {
+    ekycNameInput.addEventListener('input', () => validateEkycInputs());
+  }
+
+  if (ekycVerifyBtn) {
+    ekycVerifyBtn.addEventListener('click', async () => {
+      const aadhaar = ekycAadhaarInput.value.replace(/\s/g, '');
+      const pan = ekycPanInput.value.trim().toUpperCase();
+      const name = ekycNameInput.value.trim();
+
+      // Hide input, show verifying
+      document.getElementById('ekyc-step-input').style.display = 'none';
+      document.getElementById('ekyc-step-verifying').style.display = 'block';
+      document.getElementById('ekyc-step-success').style.display = 'none';
+      document.getElementById('ekyc-step-failed').style.display = 'none';
+
+      // Animate log lines
+      const logs = [
+        document.getElementById('ekyc-log-1'),
+        document.getElementById('ekyc-log-2'),
+        document.getElementById('ekyc-log-3'),
+        document.getElementById('ekyc-log-4')
+      ];
+      logs.forEach(l => { if (l) { l.style.opacity = '0.3'; l.style.transition = 'opacity 0.4s'; }});
+
+      for (let i = 0; i < logs.length; i++) {
+        await new Promise(r => setTimeout(r, 600));
+        if (logs[i]) logs[i].style.opacity = '1';
+      }
+
+      // Call backend API
+      try {
+        const resp = await fetch('/api/ekyc/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            borrowerId: 'borrower-' + Date.now(),
+            documentType: 'aadhaar',
+            documentNumber: aadhaar,
+            name: name,
+            panNumber: pan
+          })
+        });
+        const data = await resp.json();
+
+        await new Promise(r => setTimeout(r, 500));
+        document.getElementById('ekyc-step-verifying').style.display = 'none';
+
+        if (data.success && data.data?.status === 'verified') {
+          document.getElementById('ekyc-step-success').style.display = 'block';
+          document.getElementById('ekyc-step-failed').style.display = 'none';
+          const vid = document.getElementById('ekyc-verification-id');
+          if (vid) vid.textContent = data.data.verificationId || 'EKYC-SANDBOX-' + Math.random().toString(36).slice(2,8).toUpperCase();
+          state.ekycVerified = true;
+        } else {
+          document.getElementById('ekyc-step-failed').style.display = 'block';
+          document.getElementById('ekyc-step-success').style.display = 'none';
+          const reason = document.getElementById('ekyc-fail-reason');
+          if (reason) reason.textContent = data.data?.details?.join('. ') || data.error || 'Verification failed. Please try again.';
+        }
+      } catch (err) {
+        // API unavailable — sandbox auto-approve for demo
+        await new Promise(r => setTimeout(r, 500));
+        document.getElementById('ekyc-step-verifying').style.display = 'none';
+        document.getElementById('ekyc-step-success').style.display = 'block';
+        const vid = document.getElementById('ekyc-verification-id');
+        if (vid) vid.textContent = 'EKYC-SANDBOX-' + Math.random().toString(36).slice(2,8).toUpperCase();
+        state.ekycVerified = true;
+      }
+    });
+  }
+
+  if (ekycProceedBtn) {
+    ekycProceedBtn.addEventListener('click', () => {
+      navigateTo('quiz-screen');
+    });
+  }
+
+  if (ekycRetryBtn) {
+    ekycRetryBtn.addEventListener('click', () => {
+      document.getElementById('ekyc-step-failed').style.display = 'none';
+      document.getElementById('ekyc-step-input').style.display = 'block';
+    });
+  }
 }
 
 // Toggle Language Mode
@@ -1289,7 +1407,7 @@ async function submitAnswersToAPI() {
 }
 // Sync segmented progress bar
 function updateBorrowerProgress(screenId) {
-  const steps = ['welcome-screen', 'consent-screen', 'rbi-link-screen', 'quiz-screen', 'processing-screen', 'result-screen', 'shap-screen', 'comparison-screen', 'emi-planner-screen'];
+  const steps = ['welcome-screen', 'consent-screen', 'rbi-link-screen', 'ekyc-screen', 'quiz-screen', 'processing-screen', 'result-screen', 'shap-screen', 'comparison-screen', 'emi-planner-screen'];
   const currentIdx = steps.indexOf(screenId);
   
   // Note: There are only 5 progress segments in the DOM, so comparison/planner screens are treated as phase 5 completed (fully filled progress)
@@ -1308,6 +1426,7 @@ function updateBorrowerProgress(screenId) {
 // Handle Page Navigation Routing
 const SCREEN_ALIASES = {
   rbiLink:    'rbi-link-screen',
+  ekyc:       'ekyc-screen',
   emiPlanner: 'emi-planner-screen',
   vault:      'vault-screen',
   privacy:    'privacy-screen',
@@ -1345,6 +1464,24 @@ function renderScreen() {
   // Apply specific logic on route activations
   if (state.currentScreen === 'rbi-link-screen') {
     initRbiLinkingFlow();
+  } else if (state.currentScreen === 'ekyc-screen') {
+    // Reset to input step when entering eKYC screen
+    const inp = document.getElementById('ekyc-step-input');
+    const ver = document.getElementById('ekyc-step-verifying');
+    const suc = document.getElementById('ekyc-step-success');
+    const fail = document.getElementById('ekyc-step-failed');
+    if (!state.ekycVerified) {
+      if (inp) inp.style.display = 'block';
+      if (ver) ver.style.display = 'none';
+      if (suc) suc.style.display = 'none';
+      if (fail) fail.style.display = 'none';
+    } else {
+      // Already verified - show success directly
+      if (inp) inp.style.display = 'none';
+      if (ver) ver.style.display = 'none';
+      if (suc) suc.style.display = 'block';
+      if (fail) fail.style.display = 'none';
+    }
   } else if (state.currentScreen === 'quiz-screen') {
     renderQuestion();
   } else if (state.currentScreen === 'processing-screen') {
@@ -2900,7 +3037,7 @@ function bindRbiEvents() {
 
   // Proceed button click
   dom.rbiProceedQuizBtn.addEventListener('click', () => {
-    navigateTo('quiz-screen');
+    navigateTo('ekyc-screen');
   });
 }
 

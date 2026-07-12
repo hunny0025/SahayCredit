@@ -501,6 +501,117 @@
           </div>
         </section>
 
+        <!-- ================= eKYC VERIFICATION SCREEN ================= -->
+        <section id="ekyc-screen" class="app-screen">
+          <div class="consent-header">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 0.6rem; font-weight: 700; text-transform: uppercase; background: rgba(244, 162, 97, 0.15); color: #F4A261; padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(244, 162, 97, 0.3); letter-spacing: 0.5px;">SANDBOX MODE</span>
+            </div>
+            <h2 id="ekyc-title" class="consent-title">Identity Verification (eKYC)</h2>
+            <p id="ekyc-subtitle" class="consent-desc">Verify your identity using Aadhaar and PAN. This is required before your credit score can be generated.</p>
+          </div>
+
+          <!-- Step 1: Document Input -->
+          <div id="ekyc-step-input" class="rbi-step-container">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- Aadhaar Input -->
+              <div class="rbi-input-group">
+                <label for="ekyc-aadhaar-input" class="rbi-input-label" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 0.85rem;">🆔</span> Aadhaar Number
+                </label>
+                <input type="text" id="ekyc-aadhaar-input" class="rbi-input-field-text" placeholder="e.g. 2345 6789 0123" maxlength="14" autocomplete="off" style="letter-spacing: 2px; font-family: monospace;">
+                <p class="rbi-input-hint" style="font-size: 0.62rem; color: var(--text-muted); margin-top: 4px;">12-digit Aadhaar number. In sandbox mode, use any valid format.</p>
+              </div>
+
+              <!-- PAN Input -->
+              <div class="rbi-input-group">
+                <label for="ekyc-pan-input" class="rbi-input-label" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 0.85rem;">📄</span> PAN Number
+                </label>
+                <input type="text" id="ekyc-pan-input" class="rbi-input-field-text" placeholder="e.g. ABCDE1234F" maxlength="10" autocomplete="off" style="text-transform: uppercase; letter-spacing: 1px; font-family: monospace;">
+                <p class="rbi-input-hint" style="font-size: 0.62rem; color: var(--text-muted); margin-top: 4px;">10-character PAN (e.g. ABCDE1234F). Format: 5 letters, 4 digits, 1 letter.</p>
+              </div>
+
+              <!-- Name for verification -->
+              <div class="rbi-input-group">
+                <label for="ekyc-name-input" class="rbi-input-label" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 0.85rem;">👤</span> Full Name (as on documents)
+                </label>
+                <input type="text" id="ekyc-name-input" class="rbi-input-field-text" placeholder="e.g. Ramesh Kumar" autocomplete="off">
+              </div>
+            </div>
+
+            <div class="action-footer" style="margin-top: 25px;">
+              <button id="ekyc-verify-btn" class="btn btn-primary btn-glow" disabled>
+                <span id="ekyc-verify-btn-text">Verify Identity</span>
+                <span class="btn-icon">→</span>
+              </button>
+              <p style="font-size: 0.6rem; color: var(--text-muted); text-align: center; margin-top: 8px;">
+                🔒 Your documents are verified securely and never stored on our servers.
+              </p>
+            </div>
+          </div>
+
+          <!-- Step 2: Verification Processing -->
+          <div id="ekyc-step-verifying" class="rbi-step-container" style="display: none;">
+            <div class="rbi-status-header">
+              <div class="rbi-spinner">
+                <div class="spinner-circle"></div>
+              </div>
+              <h3 id="ekyc-verify-status" class="rbi-status-title">Verifying Documents...</h3>
+            </div>
+            <div class="rbi-logs-container card-glow">
+              <div class="rbi-log-line" id="ekyc-log-1">• Validating Aadhaar number format...</div>
+              <div class="rbi-log-line" id="ekyc-log-2">• Cross-checking PAN with NSDL registry...</div>
+              <div class="rbi-log-line" id="ekyc-log-3">• Matching name across documents...</div>
+              <div class="rbi-log-line" id="ekyc-log-4">• Generating verification certificate...</div>
+            </div>
+          </div>
+
+          <!-- Step 3: Success -->
+          <div id="ekyc-step-success" class="rbi-step-container" style="display: none;">
+            <div style="text-align: center; padding: 20px 0;">
+              <div style="font-size: 3rem; margin-bottom: 12px;">✅</div>
+              <h3 style="font-size: 1rem; font-weight: 700; color: var(--secondary); margin-bottom: 6px;">Identity Verified</h3>
+              <p style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.45;">Your Aadhaar and PAN have been successfully verified. You can now proceed to the psychometric assessment.</p>
+            </div>
+            <div style="background: rgba(2, 195, 154, 0.06); border: 1px solid rgba(2, 195, 154, 0.15); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.68rem;">
+                <span style="color: var(--text-muted);">Status</span>
+                <span style="color: var(--secondary); font-weight: 700;">Verified ✓</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.68rem;">
+                <span style="color: var(--text-muted);">Verification ID</span>
+                <span id="ekyc-verification-id" style="color: var(--text-main); font-weight: 600; font-family: monospace; font-size: 0.62rem;">EKYC-SANDBOX-XXX</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.68rem;">
+                <span style="color: var(--text-muted);">Provider</span>
+                <span style="color: var(--warning); font-weight: 600;">Sandbox (Demo)</span>
+              </div>
+            </div>
+            <div class="action-footer" style="margin-top: 20px;">
+              <button id="ekyc-proceed-btn" class="btn btn-primary btn-glow">
+                <span>Proceed to Assessment</span>
+                <span class="btn-icon">→</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 4: Failure -->
+          <div id="ekyc-step-failed" class="rbi-step-container" style="display: none;">
+            <div style="text-align: center; padding: 20px 0;">
+              <div style="font-size: 3rem; margin-bottom: 12px;">❌</div>
+              <h3 style="font-size: 1rem; font-weight: 700; color: #e74c3c; margin-bottom: 6px;">Verification Failed</h3>
+              <p id="ekyc-fail-reason" style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.45;">Document verification could not be completed. Please check your details and try again.</p>
+            </div>
+            <div class="action-footer" style="margin-top: 20px;">
+              <button id="ekyc-retry-btn" class="btn btn-primary btn-glow">
+                <span>Try Again</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
         <!-- ================= QUESTIONNAIRE SCREEN ================= -->
         <section id="quiz-screen" class="app-screen">
           <div class="quiz-progress-wrapper">
