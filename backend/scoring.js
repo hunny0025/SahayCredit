@@ -431,18 +431,18 @@ const QUESTION_WEIGHTS = [
   [{ fd: 10, ra: 2, ri: 5 }, { fd: 8, ra: 1, ri: 10 }, { fd: 5, ra: 4, ri: 6 }, { fd: 6, ra: 9, ri: 3 }],
   [{ fd: 5, ra: 3, ri: 8 }, { fd: 10, ra: 5, ri: 7 }, { fd: 6, ra: 7, ri: 8 }, { fd: 2, ra: 8, ri: 2 }],
   [{ fd: 10, ra: 3, ri: 6 }, { fd: 7, ra: 4, ri: 6 }, { fd: 5, ra: 6, ri: 5 }, { fd: 2, ra: 8, ri: 3 }],
-  [{ fd: 10, ra: 3, ri: 5 }, { fd: 6, ra: 5, ri: 3 }, { fd: 3, ra: 6, ri: 2 }],
-  [{ fd: 10, ra: 2, ri: 5 }, { fd: 5, ra: 5, ri: 3 }, { fd: 2, ra: 4, ri: 1 }],
-  [{ fd: 8, ra: 2, ri: 6 }, { fd: 3, ra: 10, ri: 4 }, { fd: 6, ra: 7, ri: 5 }],
-  [{ fd: 8, ra: 2, ri: 4 }, { fd: 2, ra: 10, ri: 1 }, { fd: 6, ra: 6, ri: 3 }],
-  [{ fd: 8, ra: 1, ri: 5 }, { fd: 6, ra: 5, ri: 3 }, { fd: 2, ra: 10, ri: 1 }],
-  [{ fd: 10, ra: 3, ri: 5 }, { fd: 5, ra: 5, ri: 3 }, { fd: 4, ra: 8, ri: 4 }],
-  [{ fd: 8, ra: 3, ri: 6 }, { fd: 10, ra: 5, ri: 4 }, { fd: 3, ra: 8, ri: 2 }],
-  [{ fd: 4, ra: 2, ri: 10 }, { fd: 3, ra: 2, ri: 6 }, { fd: 7, ra: 3, ri: 8 }],
-  [{ fd: 7, ra: 3, ri: 10 }, { fd: 5, ra: 2, ri: 6 }, { fd: 3, ra: 5, ri: 8 }],
-  [{ fd: 5, ra: 1, ri: 10 }, { fd: 5, ra: 2, ri: 4 }, { fd: 3, ra: 8, ri: 2 }],
-  [{ fd: 2, ra: 2, ri: 4 }, { fd: 8, ra: 1, ri: 10 }, { fd: 5, ra: 2, ri: 7 }],
-  [{ fd: 7, ra: 1, ri: 10 }, { fd: 1, ra: 6, ri: 1 }, { fd: 4, ra: 7, ri: 5 }]
+  [{ fd: 10, ra: 3, ri: 5 }, { fd: 6, ra: 5, ri: 3 }, { fd: 3, ra: 6, ri: 2 }, { fd: 3, ra: 6, ri: 2 }],
+  [{ fd: 10, ra: 2, ri: 5 }, { fd: 5, ra: 5, ri: 3 }, { fd: 2, ra: 4, ri: 1 }, { fd: 2, ra: 4, ri: 1 }],
+  [{ fd: 8, ra: 2, ri: 6 }, { fd: 3, ra: 10, ri: 4 }, { fd: 6, ra: 7, ri: 5 }, { fd: 6, ra: 7, ri: 5 }],
+  [{ fd: 8, ra: 2, ri: 4 }, { fd: 2, ra: 10, ri: 1 }, { fd: 6, ra: 6, ri: 3 }, { fd: 6, ra: 6, ri: 3 }],
+  [{ fd: 8, ra: 1, ri: 5 }, { fd: 6, ra: 5, ri: 3 }, { fd: 2, ra: 10, ri: 1 }, { fd: 2, ra: 10, ri: 1 }],
+  [{ fd: 10, ra: 3, ri: 5 }, { fd: 5, ra: 5, ri: 3 }, { fd: 4, ra: 8, ri: 4 }, { fd: 4, ra: 8, ri: 4 }],
+  [{ fd: 8, ra: 3, ri: 6 }, { fd: 10, ra: 5, ri: 4 }, { fd: 3, ra: 8, ri: 2 }, { fd: 3, ra: 8, ri: 2 }],
+  [{ fd: 4, ra: 2, ri: 10 }, { fd: 3, ra: 2, ri: 6 }, { fd: 7, ra: 3, ri: 8 }, { fd: 7, ra: 3, ri: 8 }],
+  [{ fd: 7, ra: 3, ri: 10 }, { fd: 5, ra: 2, ri: 6 }, { fd: 3, ra: 5, ri: 8 }, { fd: 3, ra: 5, ri: 8 }],
+  [{ fd: 5, ra: 1, ri: 10 }, { fd: 5, ra: 2, ri: 4 }, { fd: 3, ra: 8, ri: 2 }, { fd: 3, ra: 8, ri: 2 }],
+  [{ fd: 2, ra: 2, ri: 4 }, { fd: 8, ra: 1, ri: 10 }, { fd: 5, ra: 2, ri: 7 }, { fd: 5, ra: 2, ri: 7 }],
+  [{ fd: 7, ra: 1, ri: 10 }, { fd: 1, ra: 6, ri: 1 }, { fd: 4, ra: 7, ri: 5 }, { fd: 4, ra: 7, ri: 5 }]
 ];
 
 const MAX_SCORES = (() => {
@@ -467,7 +467,7 @@ function scorePsychometric(answers) {
   (answers || []).forEach((optIndex, qIndex) => {
     const choice = Math.min(Math.max(parseInt(optIndex) || 0, 0), 3);
     const weights = QUESTION_WEIGHTS[qIndex];
-    const weight = (weights && weights[choice]) || (weights && weights[0]) || { fd: 0, ra: 0, ri: 0 };
+    const weight = (weights && weights[choice]) || (weights && weights[weights.length - 1]) || { fd: 0, ra: 0, ri: 0 };
     userFd += weight.fd;
     userRa += weight.ra;
     userRi += weight.ri;
@@ -526,8 +526,11 @@ function calculateScore(answers) {
     contributions = prediction.contributions;
     
     // Step 3: Apply psychometric modifier
-    // Composite ranges from 0 to 1; modifier ranges from -15 to +15
-    const psychModifier = Math.round((psych.composite - 0.5) * 30);
+    // For thin-file borrowers, psychometric signals are the primary differentiator.
+    // The XGBoost median profile produces ~531; this modifier lets good quiz
+    // answers push into the 650-780 range while poor answers stay below 600.
+    // Composite ranges from ~0.15 to ~0.95; modifier ranges from ~-88 to +245
+    const psychModifier = Math.round((psych.composite - 0.25) * 350);
     baseScore = Math.max(300, Math.min(900, baseScore + psychModifier));
     
     // Format SHAP factors
