@@ -1,9 +1,11 @@
 {
   "method": "platt_scaling_then_pdo",
   "platt": {
-    "A": 1.0152148008346558,
-    "B": -1.9930022954940796,
-    "description": "Platt scaling: calibrated_logit = A * raw_log_odds + B; P(default) = sigmoid(calibrated_logit)"
+    "A": 1.0211509466171265,
+    "B": -1.9922815561294556,
+    "description": "Platt scaling: calibrated_logit = A * raw_log_odds + B; P(default) = sigmoid(calibrated_logit)",
+    "fit_set": "validation split (calibration_data.parquet, 46,004 rows)",
+    "evaluation_set": "test split (X_test/y_test.parquet, 46,127 rows)"
   },
   "pdo": {
     "anchor_score": 600,
@@ -19,16 +21,32 @@
   },
   "psychometric_modifier_cap": 25,
   "calibration_metrics": {
-    "ece_before_platt": 0.253231,
-    "ece_after_platt": 0.00148,
-    "validation_set_size": 46127,
-    "default_rate": 0.080734
+    "ece_raw_test": 0.253231,
+    "ece_calibrated_test_oos": 0.001087,
+    "ece_calibrated_val_insample": 0.001991,
+    "platt_fit_set_size": 46004,
+    "evaluation_set_size": 46127,
+    "default_rate_test": 0.080734,
+    "default_rate_val": 0.080732
   },
   "score_distribution": {
-    "mean": 724.7,
-    "median": 727.2,
-    "std": 71.6,
-    "pct_eligible_gte600": 95.4
+    "mean": 725.0,
+    "median": 727.5,
+    "std": 72.0,
+    "pct_eligible_gte600": 95.3
   },
-  "generated_at": "2026-07-12T14:13:20.473139"
+  "data_split_verification": {
+    "fit_set": "calibration_data.parquet (val split, 46,004 rows)",
+    "eval_set": "X_test/y_test.parquet (test split, 46,127 rows)",
+    "train_set": "features_train/target_train.parquet (full pre-split, 307,511 rows)",
+    "total_rows": 307511,
+    "split_ratios": "70% train / 15% val / 15% test (stratified)",
+    "no_leakage": true
+  },
+  "scale_pos_weight": {
+    "dataset_natural_ratio": 11.38715,
+    "optuna_optimized_value": 7.519113,
+    "explanation": "11.39 = count(TARGET=0)/count(TARGET=1) in full training data. 7.52 = Optuna's optimized value (searched in [5.69, 17.08] range, i.e., base*0.5 to base*1.5). Both are correct; model was trained with the Optuna value."
+  },
+  "generated_at": "2026-07-12T14:34:11.839182"
 }
