@@ -30,64 +30,95 @@
           <span class="logo-text" style="font-size: 1.4rem; font-weight: 800; color: var(--text-main);">Sahay<span class="logo-sub" style="color: var(--secondary);">Credit</span> <span class="hub-tag" style="font-size: 0.6rem; font-weight: 700; text-transform: uppercase; background: rgba(2, 195, 154, 0.15); color: var(--secondary); padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(2, 195, 154, 0.2); margin-left: 6px; letter-spacing: 0.5px; vertical-align: middle;">Demo Suite</span></span>
         </div>
         <p class="hub-subtitle" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin-top: 8px;">
-          Access the complete alternative credit scoring system, partner portals, and model explainers from this control panel.
+          Organized by audience: borrower-facing screens, lender-facing tools, and technical internals. Navigate directly to any view during a live demo.
         </p>
       </div>
 
-      <div class="hub-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-        <div class="hub-card active" style="background: rgba(2, 128, 144, 0.08); border: 1px solid var(--border-accent); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
-          <div class="hub-card-icon" style="font-size: 1.3rem;">📱</div>
-          <div class="hub-card-content">
-            <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Borrower Portal</h4>
-            <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Self-assessment flow for thin-file borrowers with behavior check.</p>
-            <span class="badge active-badge" style="font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 8px; background: rgba(2, 128, 144, 0.2); color: #8ce1ec; border: 1px solid rgba(2, 128, 144, 0.3); width: max-content; display: inline-block;">Active in Simulator</span>
-          </div>
+      <!-- ── Section A: Borrower Side ── -->
+      <div class="hub-section" style="margin-bottom: 18px; border-left: 3px solid rgba(2, 128, 144, 0.5); padding-left: 12px;">
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+          <span style="font-size: 0.9rem; color: #8ce1ec; line-height: 1;" aria-hidden="true">●</span>
+          <span style="font-size: 0.6rem; font-weight: 700; text-transform: uppercase; background: rgba(2, 128, 144, 0.15); color: #8ce1ec; padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(2, 128, 144, 0.25); letter-spacing: 0.5px;">Borrower Side</span>
         </div>
+        <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0 0 10px 0; line-height: 1.35;">Screens and tools a borrower interacts with.</p>
 
-        <a href="lender.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
-          <div class="hub-card-icon" style="font-size: 1.3rem;">🏦</div>
-          <div class="hub-card-content">
-            <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Lender Portal</h4>
-            <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Applications pool, decision metrics, SHAP, and consent audit trail.</p>
-            <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">Go to Portal →</span>
+        <div class="hub-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="hub-card active" style="background: rgba(2, 128, 144, 0.08); border: 1px solid var(--border-accent); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+            <div class="hub-card-icon" style="font-size: 1.3rem;">📱</div>
+            <div class="hub-card-content">
+              <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Borrower Portal</h4>
+              <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Self-assessment flow for thin-file borrowers with behavior check.</p>
+              <span class="badge active-badge" style="font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 8px; background: rgba(2, 128, 144, 0.2); color: #8ce1ec; border: 1px solid rgba(2, 128, 144, 0.3); width: max-content; display: inline-block;">Active in Simulator</span>
+            </div>
           </div>
-        </a>
 
-        <a href="demo.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
-          <div class="hub-card-icon" style="font-size: 1.3rem;">⚙️</div>
-          <div class="hub-card-content">
-            <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Persona Simulator</h4>
-            <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Pre-configure alt-data footprints (UPI, Yelp) and trigger fraud cases.</p>
-            <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">Launch Simulator →</span>
-          </div>
-        </a>
+          <a href="demo.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
+            <div class="hub-card-icon" style="font-size: 1.3rem;">⚙️</div>
+            <div class="hub-card-content">
+              <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Persona Simulator</h4>
+              <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Pre-configure alt-data footprints (UPI, Yelp) and trigger fraud cases.</p>
+              <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">Launch Simulator →</span>
+            </div>
+          </a>
+        </div>
+      </div>
 
-        <a href="map.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
-          <div class="hub-card-icon" style="font-size: 1.3rem;">🗺️</div>
-          <div class="hub-card-content">
-            <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Geospatial Map</h4>
-            <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Interactive GIS dashboard of regional credit gaps and risk clusters.</p>
-            <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">Open Map →</span>
-          </div>
-        </a>
+      <!-- ── Section B: Lender Side ── -->
+      <div class="hub-section" style="margin-bottom: 18px; border-left: 3px solid rgba(108, 99, 255, 0.45); padding-left: 12px;">
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+          <span style="font-size: 0.9rem; color: #b3adff; line-height: 1;" aria-hidden="true">●</span>
+          <span style="font-size: 0.6rem; font-weight: 700; text-transform: uppercase; background: rgba(108, 99, 255, 0.12); color: #b3adff; padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(108, 99, 255, 0.25); letter-spacing: 0.5px;">Lender Side</span>
+        </div>
+        <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0 0 10px 0; line-height: 1.35;">Screens and tools a lender interacts with.</p>
 
-        <a href="ml_pipeline.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
-          <div class="hub-card-icon" style="font-size: 1.3rem;">🧠</div>
-          <div class="hub-card-content">
-            <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">ML Pipeline</h4>
-            <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Actual Optuna tuning charts, training logs, and SHAP overview.</p>
-            <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">View Pipeline →</span>
-          </div>
-        </a>
+        <div class="hub-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <a href="lender.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
+            <div class="hub-card-icon" style="font-size: 1.3rem;">🏦</div>
+            <div class="hub-card-content">
+              <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Lender Portal</h4>
+              <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Applications pool, decision metrics, SHAP, and consent audit trail.</p>
+              <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">Go to Portal →</span>
+            </div>
+          </a>
 
-        <a href="pitch.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
-          <div class="hub-card-icon" style="font-size: 1.3rem;">📊</div>
-          <div class="hub-card-content">
-            <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Pitch Slides</h4>
-            <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Problem statement slide deck, architecture, and roadmaps.</p>
-            <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">Open Deck →</span>
-          </div>
-        </a>
+          <a href="map.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
+            <div class="hub-card-icon" style="font-size: 1.3rem;">🗺️</div>
+            <div class="hub-card-content">
+              <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Geospatial Map</h4>
+              <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Interactive GIS dashboard of regional credit gaps and risk clusters.</p>
+              <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">Open Map →</span>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- ── Section C: Behind the Scenes ── -->
+      <div class="hub-section" style="margin-bottom: 10px; padding-left: 12px;">
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+          <span style="font-size: 0.9rem; color: #c8cdd3; line-height: 1;" aria-hidden="true">●</span>
+          <span style="font-size: 0.6rem; font-weight: 700; text-transform: uppercase; background: rgba(255, 255, 255, 0.06); color: #c8cdd3; padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1); letter-spacing: 0.5px;">Behind the Scenes</span>
+        </div>
+        <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0 0 10px 0; line-height: 1.35;">Model internals, training data, and pitch materials for judges.</p>
+
+        <div class="hub-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <a href="ml_pipeline.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
+            <div class="hub-card-icon" style="font-size: 1.3rem;">🧠</div>
+            <div class="hub-card-content">
+              <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">ML Pipeline</h4>
+              <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Actual Optuna tuning charts, training logs, and SHAP overview.</p>
+              <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">View Pipeline →</span>
+            </div>
+          </a>
+
+          <a href="pitch.html" class="hub-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; transition: all 0.2s;">
+            <div class="hub-card-icon" style="font-size: 1.3rem;">📊</div>
+            <div class="hub-card-content">
+              <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Pitch Slides</h4>
+              <p style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 6px;">Problem statement slide deck, architecture, and roadmaps.</p>
+              <span class="badge-link" style="font-size: 0.65rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center;">Open Deck →</span>
+            </div>
+          </a>
+        </div>
       </div>
     </aside>
 
@@ -1326,7 +1357,13 @@
           <span class="mobile-hub-title" style="font-size: 0.95rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.2px;">⚡ Demo Hub</span>
           <button id="close-hub-drawer-btn" class="close-drawer-btn" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0 4px;">&times;</button>
         </div>
-        <div class="mobile-hub-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
+        <div class="mobile-hub-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto;">
+
+          <!-- Borrower Side -->
+          <div style="display: flex; align-items: center; gap: 5px; padding: 0 0 2px 0;">
+            <span style="font-size: 0.72rem; color: #8ce1ec; line-height: 1;" aria-hidden="true">●</span>
+            <span style="font-size: 0.55rem; font-weight: 700; text-transform: uppercase; background: rgba(2, 128, 144, 0.15); color: #8ce1ec; padding: 2px 7px; border-radius: 8px; border: 1px solid rgba(2, 128, 144, 0.25); letter-spacing: 0.4px;">Borrower Side</span>
+          </div>
           <div class="mobile-hub-item active" id="btn-mobile-onboarding" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(2, 128, 144, 0.1); border: 1px solid rgba(2, 128, 144, 0.3); border-radius: 12px; cursor: pointer;">
             <span class="mobile-hub-icon" style="font-size: 1.3rem;">📱</span>
             <div class="mobile-hub-info">
@@ -1334,18 +1371,24 @@
               <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0;">Self-assessment flow (Active)</p>
             </div>
           </div>
-          <a href="lender.html" class="mobile-hub-item" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 12px; text-decoration: none; color: inherit; transition: all 0.2s ease;">
-            <span class="mobile-hub-icon" style="font-size: 1.3rem;">🏦</span>
-            <div class="mobile-hub-info">
-              <h4 style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Lender Portal</h4>
-              <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0;">Incoming pool & audit log</p>
-            </div>
-          </a>
           <a href="demo.html" class="mobile-hub-item" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 12px; text-decoration: none; color: inherit; transition: all 0.2s ease;">
             <span class="mobile-hub-icon" style="font-size: 1.3rem;">⚙️</span>
             <div class="mobile-hub-info">
               <h4 style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Kirana Simulator</h4>
               <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0;">Configure persona & test cases</p>
+            </div>
+          </a>
+
+          <!-- Lender Side -->
+          <div style="display: flex; align-items: center; gap: 5px; padding: 6px 0 2px 0;">
+            <span style="font-size: 0.72rem; color: #b3adff; line-height: 1;" aria-hidden="true">●</span>
+            <span style="font-size: 0.55rem; font-weight: 700; text-transform: uppercase; background: rgba(108, 99, 255, 0.12); color: #b3adff; padding: 2px 7px; border-radius: 8px; border: 1px solid rgba(108, 99, 255, 0.25); letter-spacing: 0.4px;">Lender Side</span>
+          </div>
+          <a href="lender.html" class="mobile-hub-item" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 12px; text-decoration: none; color: inherit; transition: all 0.2s ease;">
+            <span class="mobile-hub-icon" style="font-size: 1.3rem;">🏦</span>
+            <div class="mobile-hub-info">
+              <h4 style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">Lender Portal</h4>
+              <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0;">Incoming pool & audit log</p>
             </div>
           </a>
           <a href="map.html" class="mobile-hub-item" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 12px; text-decoration: none; color: inherit; transition: all 0.2s ease;">
@@ -1355,6 +1398,12 @@
               <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0;">GIS regional credit gaps</p>
             </div>
           </a>
+
+          <!-- Behind the Scenes -->
+          <div style="display: flex; align-items: center; gap: 5px; padding: 6px 0 2px 0;">
+            <span style="font-size: 0.72rem; color: #c8cdd3; line-height: 1;" aria-hidden="true">●</span>
+            <span style="font-size: 0.55rem; font-weight: 700; text-transform: uppercase; background: rgba(255, 255, 255, 0.06); color: #c8cdd3; padding: 2px 7px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); letter-spacing: 0.4px;">Behind the Scenes</span>
+          </div>
           <a href="ml_pipeline.html" class="mobile-hub-item" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 12px; text-decoration: none; color: inherit; transition: all 0.2s ease;">
             <span class="mobile-hub-icon" style="font-size: 1.3rem;">🧠</span>
             <div class="mobile-hub-info">

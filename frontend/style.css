@@ -5149,7 +5149,26 @@ input:checked + .vault-slider:before {
   }
 }
 
-@media (min-width: 901px) {
+@media (min-width: 901px) and (max-width: 1100px) {
+  .page-wrapper {
+    gap: 24px;
+    padding: 12px;
+  }
+  .demo-hub-desktop {
+    max-width: 400px;
+    padding: 20px;
+    gap: 16px;
+  }
+  .demo-hub-desktop .hub-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .demo-hub-desktop .hub-section {
+    margin-bottom: 14px !important;
+  }
+}
+
+@media (min-width: 1101px) {
   body {
     overflow: auto !important;
     height: auto !important;
