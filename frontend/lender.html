@@ -60,6 +60,10 @@
         <span class="stat-title" id="stat-avg-loan-title">Avg Loan Size</span>
         <span id="stat-avg-loan" class="stat-number">₹0</span>
       </div>
+      <div class="stat-card" id="card-security-alerts" style="border: 1px solid rgba(230, 57, 70, 0.2); background: rgba(230, 57, 70, 0.02); transition: all 0.3s ease;">
+        <span class="stat-title" id="stat-alerts-title" style="color: var(--text-sub);">Security Alerts</span>
+        <span id="stat-alerts-count" class="stat-number" style="color: #02C39A;">0</span>
+      </div>
     </div>
 
     <div class="lender-tabs-row">
@@ -87,7 +91,7 @@
         <!-- Table Toolbar & Filters -->
         <div class="toolbar-box">
           <h2 class="workspace-title" id="workspace-title">Incoming Application Pool</h2>
-          <div class="filter-controls">
+          <div class="filter-controls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <input type="text" id="search-input" placeholder="Search by name..." class="search-field">
             <select id="status-filter" class="filter-dropdown">
               <option value="All" id="opt-all">All Statuses</option>
@@ -95,6 +99,10 @@
               <option value="Review" id="opt-review">In Review</option>
               <option value="Reject" id="opt-reject">Rejected</option>
             </select>
+            <label class="strict-block-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600; color: #FFF; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 8px 12px; border-radius: 8px; cursor: pointer; user-select: none; transition: all 0.3s ease;" id="strict-lock-container">
+              <input type="checkbox" id="strict-block-toggle" style="cursor: pointer; accent-color: #E63946;">
+              <span id="lbl-strict-lock">🛡️ Strict Device Lock</span>
+            </label>
           </div>
         </div>
 
@@ -109,6 +117,7 @@
                 <th id="th-loan">Loan Requested</th>
                 <th id="th-rate">Suggested Rate</th>
                 <th id="th-signals">Signals Used</th>
+                <th id="th-fraud">Fraud Risk</th>
                 <th id="th-status">Status</th>
               </tr>
             </thead>
@@ -183,6 +192,21 @@
             <div class="psych-summary-box" style="background: var(--bg-input-glass); border: 1px solid var(--border-glass); border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.85rem; color: var(--text-sub);" id="risk-attitude-label">Risk Attitude Level:</span>
               <strong id="detail-risk-attitude" class="status-pill" style="font-size: 0.8rem; padding: 4px 10px;">Medium</strong>
+            </div>
+          </div>
+
+          <!-- Device & Security Audits -->
+          <div class="detail-section" id="device-verification-section">
+            <h4 class="detail-section-title" id="device-section-title">Device & Identity Security Audits</h4>
+            <div class="psych-summary-box" style="background: var(--bg-input-glass); border: 1px solid var(--border-glass); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                <span style="color: var(--text-sub);" id="device-count-label">Linked Devices (Aadhaar):</span>
+                <strong id="detail-device-count" class="status-pill" style="font-size: 0.8rem; padding: 4px 10px; background-color: rgba(2, 195, 154, 0.15); color: #02C39A;">1 Device</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                <span style="color: var(--text-sub);" id="geo-velocity-label">Geo-Velocity Scan:</span>
+                <strong id="detail-geo-velocity" class="status-pill" style="font-size: 0.8rem; padding: 4px 10px; background-color: rgba(2, 195, 154, 0.15); color: #02C39A;">Verified (Clean)</strong>
+              </div>
             </div>
           </div>
 

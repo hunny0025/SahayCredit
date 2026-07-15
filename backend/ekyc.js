@@ -27,6 +27,32 @@ const crypto = require('crypto');
 const ekycStore = new Map();
 const ekycAuditLog = [];
 
+// Track mappings between Aadhaar (hashed or raw) and device fingerprints
+const aadhaarDeviceMap = new Map();
+const borrowerAadhaarMap = new Map();
+
+function registerAadhaarDevice(rawAadhaar, deviceFingerprint) {
+  if (!rawAadhaar || !deviceFingerprint) return;
+  if (!aadhaarDeviceMap.has(rawAadhaar)) {
+    aadhaarDeviceMap.set(rawAadhaar, new Set());
+  }
+  aadhaarDeviceMap.get(rawAadhaar).add(deviceFingerprint);
+}
+
+function getDevicesForAadhaar(rawAadhaar) {
+  if (!rawAadhaar || !aadhaarDeviceMap.has(rawAadhaar)) return [];
+  return Array.from(aadhaarDeviceMap.get(rawAadhaar));
+}
+
+function associateBorrowerAadhaar(borrowerId, rawAadhaar) {
+  if (!borrowerId || !rawAadhaar) return;
+  borrowerAadhaarMap.set(borrowerId, rawAadhaar);
+}
+
+function getAadhaarByBorrower(borrowerId) {
+  return borrowerAadhaarMap.get(borrowerId) || null;
+}
+
 // ── Pluggable Provider Interface ────────────────────────────────────────────
 
 /**
@@ -184,6 +210,14 @@ function processEkyc(borrowerId, documentData, provider = 'sandbox') {
 
   ekycStore.set(borrowerId, record);
 
+  if (result.verified && documentData.type === 'aadhaar') {
+    const raw = documentData.number.replace(/\s/g, '');
+    associateBorrowerAadhaar(borrowerId, raw);
+    if (documentData.deviceFingerprint) {
+      registerAadhaarDevice(raw, documentData.deviceFingerprint);
+    }
+  }
+
   // Audit log entry (never logs raw document numbers)
   ekycAuditLog.push({
     timestamp: new Date().toISOString(),
@@ -245,5 +279,9 @@ module.exports = {
   processEkyc,
   getEkycStatus,
   isEkycVerified,
-  getEkycAuditLog
+  getEkycAuditLog,
+  registerAadhaarDevice,
+  getDevicesForAadhaar,
+  associateBorrowerAadhaar,
+  getAadhaarByBorrower
 };

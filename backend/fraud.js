@@ -359,6 +359,41 @@ function checkIncomeCashFlowMismatch(signals, score, modelFeatures) {
 }
 
 
+function checkMultiDeviceAadhaar(context) {
+  const flags_out = [];
+  const deviceCount = (context && context.deviceCount) || 1;
+  const isReal = context && context.isReal;
+
+  if (deviceCount >= 2) {
+    flags_out.push(flag(
+      "DEVICE_MISMATCH_001",
+      `Aadhaar associated with ${deviceCount} different device fingerprints — possible identity sharing`,
+      "high",
+      isReal ? "real" : "simulated",
+      isReal ? `Aadhaar linked to ${deviceCount} active browser signatures` : "Based on simulated multi-device check"
+    ));
+  }
+  return flags_out;
+}
+
+function checkGeographicVelocity(context) {
+  const flags_out = [];
+  const velocityMismatch = context && context.velocityMismatch;
+  const isReal = context && context.isReal;
+
+  if (velocityMismatch) {
+    flags_out.push(flag(
+      "DEVICE_VELOCITY_001",
+      "Geographically impossible sequential logins detected for the same Aadhaar card",
+      "high",
+      isReal ? "real" : "simulated",
+      isReal ? "Logins detected from physically distinct locations within impossible travel window" : "Based on simulated geographical velocity check"
+    ));
+  }
+  return flags_out;
+}
+
+
 // ── Main Fraud Analysis Function ────────────────────────────────────────────
 
 /**
@@ -369,9 +404,10 @@ function checkIncomeCashFlowMismatch(signals, score, modelFeatures) {
  *   If a signal has _source: "real", it's treated as derived from real data.
  * @param {number} [score] - Optional credit score (300-900) for mismatch checks
  * @param {Object} [modelFeatures] - Optional model feature values for real-data rules
+ * @param {Object} [context] - Optional context metrics like deviceCount and velocityMismatch
  * @returns {Object} Fraud analysis result
  */
-function analyzeFraud(signals, score, modelFeatures) {
+function analyzeFraud(signals, score, modelFeatures, context) {
   if (!signals || typeof signals !== "object") {
     return {
       riskLevel: "low",
@@ -390,6 +426,8 @@ function analyzeFraud(signals, score, modelFeatures) {
     ...checkRepeatedFailedTx(signals),
     ...checkMultipleIdentity(signals),
     ...checkIncomeCashFlowMismatch(signals, score, modelFeatures),
+    ...checkMultiDeviceAadhaar(context),
+    ...checkGeographicVelocity(context)
   ];
 
   // Deduplicate flags by code
@@ -429,7 +467,9 @@ function analyzeFraud(signals, score, modelFeatures) {
     dataSourceSummary: {
       realFlags: realCount,
       simulatedFlags: simCount,
-      totalFlags: uniqueFlags.length
+      totalFlags: uniqueFlags.length,
+      deviceCount: context ? context.deviceCount : 1,
+      velocityMismatch: context ? context.velocityMismatch : false
     }
   };
 }

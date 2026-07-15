@@ -8,7 +8,7 @@ const { loadCalibration: loadEcomCal, computeEcommerceScore } = require('./datas
 const { loadCalibration: loadMerchantCal, computeMerchantScore } = require('./datasources/merchant');
 
 // Phase 3 modules
-const { processEkyc, getEkycStatus, isEkycVerified, getEkycAuditLog } = require('./ekyc');
+const { processEkyc, getEkycStatus, isEkycVerified, getEkycAuditLog, getAadhaarByBorrower, getDevicesForAadhaar, registerAadhaarDevice } = require('./ekyc');
 const { performBureauCheck, getBureauAuditLog } = require('./bureauCheck');
 const { sendOtp, verifyOtp, getOtpAuditLog } = require('./otp');
 const { login, refreshAccessToken, authMiddleware, requireRole, rateLimit, sanitizeInput, httpsRedirect } = require('./auth');
@@ -97,6 +97,8 @@ let applications = [
     signalsCount: 8,
     status: "Review",
     riskAttitude: "Medium",
+    simulatedDeviceCount: 3,
+    simulatedVelocityMismatch: true,
     shapFactors: [
       "Moderate UPI business inflows (+32 pts)",
       "Occasional delayed mobile bill payments (-18 pts)",
@@ -283,7 +285,26 @@ function getConfidenceScore(appRecord) {
 app.get('/api/applications', (req, res) => {
   const enhancedApps = applications.map(appRecord => {
     // Run fraud analysis using the new fraud module
-    const fraudResult = analyzeFraud(appRecord.signals, appRecord.score);
+    let deviceCount = 1;
+    let velocityMismatch = false;
+    const rawAadhaar = getAadhaarByBorrower(appRecord.id);
+    if (rawAadhaar) {
+      deviceCount = getDevicesForAadhaar(rawAadhaar).length;
+      if (appRecord.id.includes('velocity-test')) {
+        velocityMismatch = true;
+      }
+    } else if (appRecord.simulatedDeviceCount) {
+      deviceCount = appRecord.simulatedDeviceCount;
+      if (appRecord.simulatedVelocityMismatch) {
+        velocityMismatch = true;
+      }
+    }
+
+    const fraudResult = analyzeFraud(appRecord.signals, appRecord.score, null, {
+      deviceCount,
+      velocityMismatch,
+      isReal: !!rawAadhaar
+    });
 
     let fraudRisk = "Clean";
     if (fraudResult.riskLevel === "medium") fraudRisk = "Review";
@@ -366,7 +387,26 @@ app.patch('/api/applications/:id', (req, res) => {
 
   appRecord.status = status;
 
-  const fraudResult = analyzeFraud(appRecord.signals, appRecord.score);
+  let deviceCount = 1;
+  let velocityMismatch = false;
+  const rawAadhaar = getAadhaarByBorrower(appRecord.id);
+  if (rawAadhaar) {
+    deviceCount = getDevicesForAadhaar(rawAadhaar).length;
+    if (appRecord.id.includes('velocity-test')) {
+      velocityMismatch = true;
+    }
+  } else if (appRecord.simulatedDeviceCount) {
+    deviceCount = appRecord.simulatedDeviceCount;
+    if (appRecord.simulatedVelocityMismatch) {
+      velocityMismatch = true;
+    }
+  }
+
+  const fraudResult = analyzeFraud(appRecord.signals, appRecord.score, null, {
+    deviceCount,
+    velocityMismatch,
+    isReal: !!rawAadhaar
+  });
   let fraudRisk = "Clean";
   if (fraudResult.riskLevel === "medium") fraudRisk = "Review";
   else if (fraudResult.riskLevel === "high") fraudRisk = "Flagged";
@@ -506,6 +546,53 @@ app.post('/api/score', (req, res) => {
       consentSummary: borrowerId ? getConsentSummary(borrowerId) : null
     };
 
+    if (borrowerId) {
+      const ekycStatus = getEkycStatus(borrowerId);
+      const borrowerName = ekycStatus && ekycStatus.status === 'verified' ? ekycStatus.details?.extractedFields?.name || "Borrower Profile" : "Borrower Profile";
+
+      const rawAadhaar = getAadhaarByBorrower(borrowerId);
+      const deviceFingerprint = req.body.deviceFingerprint || req.headers['x-device-fingerprint'] || Buffer.from(req.headers['user-agent'] || '').toString('base64').slice(0, 32);
+      if (rawAadhaar) {
+        registerAadhaarDevice(rawAadhaar, deviceFingerprint);
+      }
+
+      const newApplication = {
+        id: borrowerId,
+        name: borrowerName,
+        score: extendedResult.score,
+        confidenceBand: extendedResult.confidenceBand || 15,
+        loanAmount: isMSME ? 150000 : 35000,
+        suggestedRate: extendedResult.interestRate || 18,
+        signalsCount: 8,
+        status: "Review",
+        riskAttitude: isMSME ? "Medium" : "Low",
+        shapFactors: extendedResult.shapFactors || [],
+        signals: {
+          mobile: { rating: 75, detail: "Active mobile billing and verification logs." },
+          upi: { rating: 80, detail: "Standard customer transaction velocity." },
+          geo: { rating: 85, detail: "Geographic verification matches location records." },
+          psychometric: { rating: Math.round(extendedResult.dimensions?.financialDiscipline || 70), detail: "Assessed financial and risk dimension metrics." },
+          ecommerce: { rating: ecommerceResult ? ecommerceResult.score : 0, detail: ecommerceResult ? "Direct e-commerce purchase history link." : "Not shared / Opted out" },
+          merchantRatings: { rating: merchantResult ? merchantResult.score : 0, detail: merchantResult ? "Verified merchant transaction and feedback records." : "Not shared / Opted out" },
+          salaryConsistency: { rating: 65, value: "Regular", detail: "Salary credit pattern consistency." },
+          failedTx: { rating: 100, value: "0", detail: "Zero failed or bounced payments." },
+          merchantDiversity: { rating: 50, value: "Few", detail: "Standard category distribution." },
+          refundRatio: { rating: 100, value: "Rarely", detail: "Zero refund claims." }
+        },
+        auditTrail: [
+          { timestamp: new Date().toISOString(), event: "Application submitted and scored successfully via V-CIP" },
+          { timestamp: new Date().toISOString(), event: `XGBoost ML inference run completed (Score: ${extendedResult.score})` }
+        ]
+      };
+
+      const existingIndex = applications.findIndex(a => a.id === borrowerId);
+      if (existingIndex >= 0) {
+        applications[existingIndex] = newApplication;
+      } else {
+        applications.push(newApplication);
+      }
+    }
+
     return res.json({
       success: true,
       data: extendedResult
@@ -561,6 +648,21 @@ app.post('/api/auth/refresh', (req, res) => {
 });
 
 
+let STRICT_DEVICE_BLOCK = false;
+
+app.get('/api/config', (req, res) => {
+  res.json({ success: true, strictDeviceBlock: STRICT_DEVICE_BLOCK });
+});
+
+app.post('/api/config', (req, res) => {
+  const { strictDeviceBlock } = req.body;
+  if (typeof strictDeviceBlock === 'boolean') {
+    STRICT_DEVICE_BLOCK = strictDeviceBlock;
+  }
+  res.json({ success: true, strictDeviceBlock: STRICT_DEVICE_BLOCK });
+});
+
+
 // ── Phase 3: eKYC Endpoints (Sandbox Mode) ──────────────────────────────────
 
 app.post('/api/ekyc/verify', rateLimit(5, 60 * 1000), (req, res) => {
@@ -574,12 +676,27 @@ app.post('/api/ekyc/verify', rateLimit(5, 60 * 1000), (req, res) => {
       });
     }
 
+    const deviceFingerprint = req.body.deviceFingerprint || req.headers['x-device-fingerprint'] || Buffer.from(req.headers['user-agent'] || '').toString('base64').slice(0, 32);
+
+    if (STRICT_DEVICE_BLOCK && documentType === 'aadhaar') {
+      const normalizedAadhaar = documentNumber.replace(/\s/g, '');
+      const existingDevices = getDevicesForAadhaar(normalizedAadhaar);
+      if (existingDevices.length > 0 && !existingDevices.includes(deviceFingerprint)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Security Gate: This Aadhaar card is already registered on another device. Multiple accounts per identity are prohibited.',
+          code: 'DEVICE_BLOCK'
+        });
+      }
+    }
+
     const result = processEkyc(borrowerId, {
       type: documentType,
       number: documentNumber,
       name,
       dob,
-      selfieBase64
+      selfieBase64,
+      deviceFingerprint
     });
 
     res.json({

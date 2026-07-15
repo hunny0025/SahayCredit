@@ -307,6 +307,8 @@ const dom = {
   tableBody: document.getElementById('applications-table-body'),
   searchInput: document.getElementById('search-input'),
   statusFilter: document.getElementById('status-filter'),
+  strictBlockToggle: document.getElementById('strict-block-toggle'),
+  strictLockContainer: document.getElementById('strict-lock-container'),
   
   // Stats
   statActive: document.getElementById('stat-active'),
@@ -329,6 +331,8 @@ const dom = {
   // Dynamic Alternate Signals
   signalsChartContainer: document.getElementById('signals-chart-container'),
   detailRiskAttitude: document.getElementById('detail-risk-attitude'),
+  detailDeviceCount: document.getElementById('detail-device-count'),
+  detailGeoVelocity: document.getElementById('detail-geo-velocity'),
   
   // Actions
   btnApprove: document.getElementById('action-approve-btn'),
@@ -367,7 +371,36 @@ const dom = {
 async function init() {
   bindEvents();
   await fetchApplications();
+  await fetchConfig();
   translateLenderUI();
+}
+
+async function fetchConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const data = await res.json();
+    if (data && data.success) {
+      if (dom.strictBlockToggle) {
+        dom.strictBlockToggle.checked = !!data.strictDeviceBlock;
+        updateStrictLockVisual(!!data.strictDeviceBlock);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load server config:', e);
+  }
+}
+
+function updateStrictLockVisual(isActive) {
+  if (!dom.strictLockContainer) return;
+  if (isActive) {
+    dom.strictLockContainer.style.background = 'rgba(230, 57, 70, 0.15)';
+    dom.strictLockContainer.style.borderColor = 'rgba(230, 57, 70, 0.4)';
+    dom.strictLockContainer.style.boxShadow = '0 0 10px rgba(230, 57, 70, 0.1)';
+  } else {
+    dom.strictLockContainer.style.background = 'rgba(255, 255, 255, 0.05)';
+    dom.strictLockContainer.style.borderColor = 'var(--border-glass)';
+    dom.strictLockContainer.style.boxShadow = 'none';
+  }
 }
 
 // Helper: safe addEventListener (no-op if element is null)
@@ -387,6 +420,21 @@ function bindEvents() {
   safeOn(dom.statusFilter, 'change', (e) => {
     state.statusFilter = e.target.value;
     renderTable();
+  });
+
+  // Strict device block toggle
+  safeOn(dom.strictBlockToggle, 'change', async (e) => {
+    const isActive = e.target.checked;
+    updateStrictLockVisual(isActive);
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strictDeviceBlock: isActive })
+      });
+    } catch (err) {
+      console.error('Failed to update strict device block config:', err);
+    }
   });
 
   // Decision buttons inside detail drawer
@@ -623,6 +671,35 @@ function calculateStats() {
   const totalLoan = apps.reduce((acc, a) => acc + a.loanAmount, 0);
   const avgLoan = Math.round(totalLoan / apps.length);
   dom.statAvgLoan.textContent = `₹${avgLoan.toLocaleString('en-IN')}`;
+
+  // Security alerts count
+  const alertApps = apps.filter(app => {
+    const hasDeviceViolation = (app.fraudAnalysis && app.fraudAnalysis.flags && app.fraudAnalysis.flags.some(f => f.code === 'DEVICE_MISMATCH_001')) || (app.simulatedDeviceCount >= 2);
+    const hasVelocityViolation = (app.fraudAnalysis && app.fraudAnalysis.flags && app.fraudAnalysis.flags.some(f => f.code === 'DEVICE_VELOCITY_001')) || (app.simulatedVelocityMismatch);
+    return hasDeviceViolation || hasVelocityViolation;
+  });
+
+  const alertsCount = alertApps.length;
+  const countEl = document.getElementById('stat-alerts-count');
+  const cardEl = document.getElementById('card-security-alerts');
+  if (countEl) {
+    countEl.textContent = alertsCount;
+    if (alertsCount > 0) {
+      countEl.style.color = '#FF4D4D';
+      if (cardEl) {
+        cardEl.style.borderColor = 'rgba(230, 57, 70, 0.5)';
+        cardEl.style.background = 'rgba(230, 57, 70, 0.05)';
+        cardEl.style.boxShadow = '0 0 15px rgba(230, 57, 70, 0.15)';
+      }
+    } else {
+      countEl.style.color = '#02C39A';
+      if (cardEl) {
+        cardEl.style.borderColor = 'var(--border-glass)';
+        cardEl.style.background = 'var(--bg-card-glass)';
+        cardEl.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
+      }
+    }
+  }
 }
 
 // Render filtered applications in the table
@@ -672,8 +749,18 @@ function renderTable() {
       ? (app.fraudRisk === "Clean" ? "साफ" : app.fraudRisk === "Review" ? "समीक्षा" : "ध्वजांकित")
       : app.fraudRisk;
 
+    const hasDeviceViolation = (app.fraudAnalysis && app.fraudAnalysis.flags && app.fraudAnalysis.flags.some(f => f.code === 'DEVICE_MISMATCH_001')) || (app.simulatedDeviceCount >= 2);
+    const hasVelocityViolation = (app.fraudAnalysis && app.fraudAnalysis.flags && app.fraudAnalysis.flags.some(f => f.code === 'DEVICE_VELOCITY_001')) || (app.simulatedVelocityMismatch);
+
+    let nameCellContent = app.name;
+    if (hasDeviceViolation) {
+      nameCellContent += ` <span style="margin-left: 8px; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(230, 57, 70, 0.15); color: #FF4D4D; border: 1px solid rgba(230, 57, 70, 0.3); vertical-align: middle; white-space: nowrap;">⚠️ Device Violations</span>`;
+    } else if (hasVelocityViolation) {
+      nameCellContent += ` <span style="margin-left: 8px; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(230, 57, 70, 0.15); color: #FF4D4D; border: 1px solid rgba(230, 57, 70, 0.3); vertical-align: middle; white-space: nowrap;">⚠️ Geo Violations</span>`;
+    }
+
     tr.innerHTML = `
-      <td style="font-weight: 600;">${app.name}</td>
+      <td style="font-weight: 600;">${nameCellContent}</td>
       <td style="font-weight: 700;">${app.score}</td>
       <td style="color: ${confidenceColor}; font-weight: 700;">${app.confidence}%</td>
       <td>₹${app.loanAmount.toLocaleString('en-IN')}</td>
@@ -867,6 +954,31 @@ function selectApplicant(app) {
     `;
     dom.detailAuditTrail.appendChild(li);
   });
+
+  if (dom.detailDeviceCount && dom.detailGeoVelocity) {
+    const summary = (app.fraudAnalysis && app.fraudAnalysis.dataSourceSummary) || {};
+    const devCount = summary.deviceCount || 1;
+    const velocityFlag = summary.velocityMismatch || false;
+
+    dom.detailDeviceCount.textContent = devCount === 1 ? "1 Device" : `${devCount} Devices`;
+    if (devCount >= 2) {
+      dom.detailDeviceCount.style.backgroundColor = 'rgba(230, 57, 70, 0.15)';
+      dom.detailDeviceCount.style.color = '#E63946';
+    } else {
+      dom.detailDeviceCount.style.backgroundColor = 'rgba(2, 195, 154, 0.15)';
+      dom.detailDeviceCount.style.color = '#02C39A';
+    }
+
+    if (velocityFlag) {
+      dom.detailGeoVelocity.textContent = state.currentLanguage === 'hi' ? "संकेतित जोखिम" : "Flagged Mismatch";
+      dom.detailGeoVelocity.style.backgroundColor = 'rgba(230, 57, 70, 0.15)';
+      dom.detailGeoVelocity.style.color = '#E63946';
+    } else {
+      dom.detailGeoVelocity.textContent = state.currentLanguage === 'hi' ? "सत्यापित" : "Verified (Clean)";
+      dom.detailGeoVelocity.style.backgroundColor = 'rgba(2, 195, 154, 0.15)';
+      dom.detailGeoVelocity.style.color = '#02C39A';
+    }
+  }
 }
 
 // Format ratings, handling "Not Available" cases

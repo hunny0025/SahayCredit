@@ -487,6 +487,8 @@ const UI_TRANSLATIONS = {
 
 // Application State
 let state = {
+  borrowerId: 'borrower-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36),
+  deviceFingerprint: btoa(navigator.userAgent + '_' + screen.width + 'x' + screen.height + '_' + navigator.language),
   currentLanguage: 'en', // 'en' or 'hi'
   currentScreen: 'welcome-screen',
   currentQuestionIndex: 0,
@@ -1046,11 +1048,12 @@ function bindEvents() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            borrowerId: 'borrower-' + Date.now(),
+            borrowerId: state.borrowerId,
             documentType: 'aadhaar',
             documentNumber: aadhaar,
             name: name,
-            panNumber: pan
+            panNumber: pan,
+            deviceFingerprint: state.deviceFingerprint
           })
         });
         const data = await resp.json();
@@ -1320,9 +1323,8 @@ async function submitAnswersToAPI() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout for composite
 
-    // Generate a session borrower ID for consent tracking
-    const borrowerId = 'borrower-' + Date.now().toString(36);
-    state.borrowerId = borrowerId;
+    // Use the session borrower ID for consent tracking
+    const borrowerId = state.borrowerId;
 
     // Check consent toggle states
     const ecomConsent = document.getElementById('consent-ecom-toggle')?.checked || false;
@@ -1352,7 +1354,8 @@ async function submitAnswersToAPI() {
     // Build request body with optional alt-data
     const requestBody = {
       answers: state.answers,
-      borrowerId
+      borrowerId,
+      deviceFingerprint: state.deviceFingerprint
     };
 
     // Sample e-commerce data (Olist-schema compatible demo)
