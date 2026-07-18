@@ -16,6 +16,12 @@ const { sendOtp, verifyOtp, getOtpAuditLog } = require('./otp');
 const { login, refreshAccessToken, authMiddleware, requireRole, rateLimit, sanitizeInput, httpsRedirect } = require('./auth');
 const { encrypt, decrypt } = require('./encryption');
 
+// Phase 4 modules
+const { categorizeTransactions } = require('./transactionCategorizer');
+const { computeAffordability } = require('./affordability');
+const { computeFinancialHealth } = require('./financialHealth');
+const { computeLoanRecommendation } = require('./loanRecommendation');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -621,6 +627,38 @@ app.post('/api/score', async (req, res) => {
       coreResult.score, ecommerceResult, merchantResult, behaviourResult
     );
 
+    // Phase 4: Transaction categorization + affordability-aware recommendation
+    let transactionCategories = null;
+    let loanRecommendation = null;
+
+    if (borrowerId && behaviourData && behaviourData.transactions) {
+      // Categorize transactions
+      transactionCategories = categorizeTransactions(borrowerId, behaviourData.transactions);
+
+      // Compute affordability
+      const affordabilityResult = computeAffordability(borrowerId, {
+        categorizedData: transactionCategories,
+        isMSME: isMSME || false,
+        interestRate: coreResult.interestRate || 14,
+        tenureMonths: 36
+      });
+
+      // Generate loan recommendation
+      if (affordabilityResult) {
+        loanRecommendation = computeLoanRecommendation({
+          creditScore: composite.compositeScore,
+          affordabilityData: affordabilityResult,
+          isMSME: isMSME || false
+        });
+      }
+    } else if (borrowerId) {
+      // Score-only recommendation (no transaction data)
+      loanRecommendation = computeLoanRecommendation({
+        creditScore: composite.compositeScore,
+        isMSME: isMSME || false
+      });
+    }
+
     // Build extended response (additive — core fields remain unchanged)
     const extendedResult = {
       ...coreResult,
@@ -632,7 +670,10 @@ app.post('/api/score', async (req, res) => {
       sourceCount: composite.sourceCount,
       compositeConfidence: composite.confidenceScore,
       compositeExplanation: composite.explanation,
-      consentSummary: borrowerId ? getConsentSummary(borrowerId) : null
+      consentSummary: borrowerId ? getConsentSummary(borrowerId) : null,
+      // Phase 4 enrichments (additive — won't break existing consumers)
+      transactionCategories: transactionCategories || undefined,
+      loanRecommendation: loanRecommendation || undefined
     };
 
     if (borrowerId) {
@@ -842,12 +883,29 @@ app.get('/api/ekyc/status/:borrowerId', (req, res) => {
 
 app.post('/api/bureau-check', rateLimit(5, 60 * 1000), (req, res) => {
   try {
-    const { borrowerId, pan, name, dob } = req.body;
+    const { borrowerId, pan, name, dob, mobile } = req.body;
 
-    if (!borrowerId || !pan) {
+    // Validate Required fields
+    if (!borrowerId || !pan || !name || !dob || !mobile) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: borrowerId, pan'
+        error: 'Identity Verification Failed'
+      });
+    }
+
+    // Validate PAN format (5 letters, 4 digits, 1 letter)
+    const panValid = /^[A-Z]{5}\d{4}[A-Z]$/i.test(pan.trim());
+    
+    // Validate Mobile format (10 digits)
+    const mobileValid = /^\d{10}$/.test(mobile.trim());
+
+    // Validate DOB presence and validity
+    const dobValid = !isNaN(Date.parse(dob));
+
+    if (!panValid || !mobileValid || !dobValid || name.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Identity Verification Failed'
       });
     }
 
@@ -855,7 +913,11 @@ app.post('/api/bureau-check', rateLimit(5, 60 * 1000), (req, res) => {
 
     res.json({
       success: true,
-      data: result,
+      data: {
+        status: result.status,
+        creditScore: result.creditScore,
+        source: result.source
+      },
       notice: 'Bureau Check (Simulated Registry) - Architecture ready for CIBIL/Experian API'
     });
   } catch (error) {
@@ -920,6 +982,191 @@ app.get('/api/audit/full', (req, res) => {
       totalEntries: consentAudit.length + ekycAudit.length + bureauAudit.length + otpAudit.length
     }
   });
+});
+
+
+// ── Phase 4: Transaction Categorization Endpoint ────────────────────────────
+
+app.post('/api/transactions/categorize', (req, res) => {
+  try {
+    const { borrowerId, transactions } = req.body;
+
+    if (!borrowerId || !transactions) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: borrowerId, transactions'
+      });
+    }
+
+    const result = categorizeTransactions(borrowerId, transactions);
+    if (!result) {
+      return res.status(403).json({
+        success: false,
+        error: 'Behaviour consent not granted for this borrower'
+      });
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[TransactionCategorizer] Error:', error);
+    res.status(500).json({ success: false, error: 'Transaction categorization failed' });
+  }
+});
+
+
+// ── Phase 4: Affordability Endpoint ─────────────────────────────────────────
+
+app.post('/api/affordability', (req, res) => {
+  try {
+    const { borrowerId, transactions, isMSME, interestRate, tenureMonths, requestedAmount } = req.body;
+
+    if (!borrowerId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: borrowerId'
+      });
+    }
+
+    // Categorize transactions first (if provided)
+    let categorizedData = null;
+    if (transactions && Array.isArray(transactions)) {
+      categorizedData = categorizeTransactions(borrowerId, transactions);
+    }
+
+    const result = computeAffordability(borrowerId, {
+      categorizedData,
+      isMSME: isMSME || false,
+      interestRate: interestRate || 14,
+      tenureMonths: tenureMonths || 36,
+      requestedAmount
+    });
+
+    if (!result) {
+      return res.status(403).json({
+        success: false,
+        error: 'Behaviour consent not granted for this borrower'
+      });
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[Affordability] Error:', error);
+    res.status(500).json({ success: false, error: 'Affordability assessment failed' });
+  }
+});
+
+
+// ── Phase 4: Financial Health Endpoint (BORROWER-FACING ONLY) ───────────────
+// INTEGRITY: This endpoint returns a diagnostic report to the borrower.
+// Its output is NEVER stored in applications[] or used in any lending decision.
+
+app.get('/api/financial-health/:borrowerId', (req, res) => {
+  try {
+    const { borrowerId } = req.params;
+
+    // Financial Health needs transaction data — check if we have cached behaviour data
+    // In a real system this would pull from AA. For demo, accept query param or POST.
+    res.json({
+      success: true,
+      data: null,
+      notice: 'Financial Health requires transaction data. Use POST /api/financial-health with transactions in body.'
+    });
+  } catch (error) {
+    console.error('[FinancialHealth] Error:', error);
+    res.status(500).json({ success: false, error: 'Financial health assessment failed' });
+  }
+});
+
+app.post('/api/financial-health', (req, res) => {
+  try {
+    const { borrowerId, transactions } = req.body;
+
+    if (!borrowerId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: borrowerId'
+      });
+    }
+
+    // Step 1: Categorize transactions
+    let categorizedData = null;
+    if (transactions && Array.isArray(transactions)) {
+      categorizedData = categorizeTransactions(borrowerId, transactions);
+    }
+
+    // Step 2: Compute affordability (for debt burden dimension)
+    let affordabilityData = null;
+    if (categorizedData) {
+      affordabilityData = computeAffordability(borrowerId, {
+        categorizedData,
+        isMSME: req.body.isMSME || false
+      });
+    }
+
+    // Step 3: Compute financial health
+    const result = computeFinancialHealth(borrowerId, {
+      categorizedData,
+      affordabilityData,
+      transactions: transactions || []
+    });
+
+    if (!result) {
+      return res.status(403).json({
+        success: false,
+        error: 'Behaviour consent not granted for this borrower'
+      });
+    }
+
+    // INTEGRITY: Do NOT write result to applications[] or any lending data store
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[FinancialHealth] Error:', error);
+    res.status(500).json({ success: false, error: 'Financial health assessment failed' });
+  }
+});
+
+
+// ── Phase 4: Loan Recommendation Endpoint ───────────────────────────────────
+
+app.post('/api/loan-recommendation', (req, res) => {
+  try {
+    const { borrowerId, creditScore, transactions, isMSME, requestedAmount, requestedTenure } = req.body;
+
+    if (!creditScore) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: creditScore'
+      });
+    }
+
+    // Compute affordability if transactions provided
+    let affordabilityData = null;
+    if (borrowerId && transactions && Array.isArray(transactions)) {
+      const categorizedData = categorizeTransactions(borrowerId, transactions);
+      if (categorizedData) {
+        affordabilityData = computeAffordability(borrowerId, {
+          categorizedData,
+          isMSME: isMSME || false,
+          interestRate: 14,
+          tenureMonths: requestedTenure || 36,
+          requestedAmount
+        });
+      }
+    }
+
+    const result = computeLoanRecommendation({
+      creditScore,
+      affordabilityData,
+      isMSME: isMSME || false,
+      requestedAmount,
+      requestedTenure
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[LoanRecommendation] Error:', error);
+    res.status(500).json({ success: false, error: 'Loan recommendation failed' });
+  }
 });
 
 

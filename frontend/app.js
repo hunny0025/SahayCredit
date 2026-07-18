@@ -532,6 +532,7 @@ const dom = {
   langBtn: document.getElementById('lang-toggle-btn'),
   screens: {
     welcome: document.getElementById('welcome-screen'),
+    bureauGate: document.getElementById('bureau-gate-screen'),
     consent: document.getElementById('consent-screen'),
     rbiLink: document.getElementById('rbi-link-screen'),
     ekyc: document.getElementById('ekyc-screen'),
@@ -788,10 +789,13 @@ function bindEvents() {
     if (mobileOnboardingBtn) mobileOnboardingBtn.addEventListener('click', closeHub);
   }
 
-  // Welcome Screen -> Start (Proceed to Consent Screen first)
+  // Welcome Screen -> Start (Proceed to Bureau Gate first)
   dom.startBtn.addEventListener('click', () => {
-    navigateTo('consent-screen');
+    navigateTo('bureau-gate-screen');
   });
+
+  // Bureau Gate Screen — form validation and event binding
+  bindBureauGateEvents();
 
   // Consent Screen - Toggles
   dom.consentToggles.upi.addEventListener('change', (e) => {
@@ -1423,7 +1427,7 @@ async function submitAnswersToAPI() {
 }
 // Sync segmented progress bar
 function updateBorrowerProgress(screenId) {
-  const steps = ['welcome-screen', 'consent-screen', 'rbi-link-screen', 'ekyc-screen', 'quiz-screen', 'processing-screen', 'result-screen', 'shap-screen', 'comparison-screen', 'emi-planner-screen'];
+  const steps = ['welcome-screen', 'bureau-gate-screen', 'consent-screen', 'rbi-link-screen', 'ekyc-screen', 'quiz-screen', 'processing-screen', 'result-screen', 'shap-screen', 'comparison-screen', 'emi-planner-screen'];
   const currentIdx = steps.indexOf(screenId);
   
   // Note: There are only 5 progress segments in the DOM, so comparison/planner screens are treated as phase 5 completed (fully filled progress)
@@ -1442,6 +1446,7 @@ function updateBorrowerProgress(screenId) {
 // Handle Page Navigation Routing
 const SCREEN_ALIASES = {
   rbiLink:    'rbi-link-screen',
+  bureauGate: 'bureau-gate-screen',
   ekyc:       'ekyc-screen',
   emiPlanner: 'emi-planner-screen',
   vault:      'vault-screen',
@@ -1478,7 +1483,9 @@ function renderScreen() {
   updateBorrowerProgress(state.currentScreen);
 
   // Apply specific logic on route activations
-  if (state.currentScreen === 'rbi-link-screen') {
+  if (state.currentScreen === 'bureau-gate-screen') {
+    resetBureauGateUI();
+  } else if (state.currentScreen === 'rbi-link-screen') {
     initRbiLinkingFlow();
   } else if (state.currentScreen === 'ekyc-screen') {
     // Reset to input step when entering eKYC screen
@@ -2965,6 +2972,151 @@ function flAnimatePackets({ ids, routes, duration, label }) {
   }
 
   requestAnimationFrame(frame);
+}
+
+/* ================================================================
+   CREDIT BUREAU GATEWAY ENGINE
+   ================================================================ */
+
+function resetBureauGateUI() {
+  const form = document.getElementById('bureau-gate-form');
+  const checking = document.getElementById('bureau-gate-checking');
+  const eligible = document.getElementById('bureau-gate-eligible');
+  const blocked = document.getElementById('bureau-gate-blocked');
+  if (form) form.style.display = 'block';
+  if (checking) checking.style.display = 'none';
+  if (eligible) eligible.style.display = 'none';
+  if (blocked) blocked.style.display = 'none';
+
+  // Reset log line styles
+  ['bureau-log-1', 'bureau-log-2', 'bureau-log-3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.opacity = '0.3'; el.style.transition = 'opacity 0.4s'; }
+  });
+}
+
+function validateBureauGateInputs() {
+  const name = (document.getElementById('bureau-name-input')?.value || '').trim();
+  const pan = (document.getElementById('bureau-pan-input')?.value || '').trim().toUpperCase();
+  const dob = (document.getElementById('bureau-dob-input')?.value || '').trim();
+  const mobile = (document.getElementById('bureau-mobile-input')?.value || '').trim();
+
+  const nameValid = name.length >= 2;
+  const panValid = /^[A-Z]{5}\d{4}[A-Z]$/.test(pan);
+  const dobValid = dob.length > 0 && !isNaN(Date.parse(dob));
+  const mobileValid = /^\d{10}$/.test(mobile);
+
+  const btn = document.getElementById('bureau-check-btn');
+  if (btn) btn.disabled = !(nameValid && panValid && dobValid && mobileValid);
+}
+
+function bindBureauGateEvents() {
+  const nameInput = document.getElementById('bureau-name-input');
+  const panInput = document.getElementById('bureau-pan-input');
+  const dobInput = document.getElementById('bureau-dob-input');
+  const mobileInput = document.getElementById('bureau-mobile-input');
+  const checkBtn = document.getElementById('bureau-check-btn');
+  const proceedBtn = document.getElementById('bureau-proceed-btn');
+  const restartBtn = document.getElementById('bureau-restart-btn');
+
+  if (nameInput) nameInput.addEventListener('input', validateBureauGateInputs);
+  if (panInput) panInput.addEventListener('input', validateBureauGateInputs);
+  if (dobInput) dobInput.addEventListener('input', validateBureauGateInputs);
+  if (mobileInput) {
+    mobileInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+      validateBureauGateInputs();
+    });
+  }
+
+  if (checkBtn) {
+    checkBtn.addEventListener('click', async () => {
+      const name = document.getElementById('bureau-name-input').value.trim();
+      const pan = document.getElementById('bureau-pan-input').value.trim().toUpperCase();
+      const dob = document.getElementById('bureau-dob-input').value.trim();
+      const mobile = document.getElementById('bureau-mobile-input').value.trim();
+
+      // Hide form, show checking animation
+      document.getElementById('bureau-gate-form').style.display = 'none';
+      document.getElementById('bureau-gate-checking').style.display = 'block';
+      document.getElementById('bureau-gate-eligible').style.display = 'none';
+      document.getElementById('bureau-gate-blocked').style.display = 'none';
+
+      // Animate log lines
+      const logs = [
+        document.getElementById('bureau-log-1'),
+        document.getElementById('bureau-log-2'),
+        document.getElementById('bureau-log-3')
+      ];
+      logs.forEach(l => { if (l) { l.style.opacity = '0.3'; l.style.transition = 'opacity 0.4s'; }});
+
+      for (let i = 0; i < logs.length; i++) {
+        await new Promise(r => setTimeout(r, 700));
+        if (logs[i]) logs[i].style.opacity = '1';
+      }
+
+      // Call backend API
+      try {
+        const resp = await fetch('/api/bureau-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            borrowerId: state.borrowerId,
+            pan, name, dob, mobile
+          })
+        });
+        const data = await resp.json();
+
+        await new Promise(r => setTimeout(r, 500));
+        document.getElementById('bureau-gate-checking').style.display = 'none';
+
+        if (data.success && data.data.status === 'HAS_CREDIT_HISTORY') {
+          // Blocked — has existing credit
+          document.getElementById('bureau-gate-blocked').style.display = 'block';
+          const scoreEl = document.getElementById('bureau-blocked-score');
+          if (scoreEl) scoreEl.textContent = data.data.creditScore || '—';
+        } else {
+          // Eligible — no credit history (or API returned NO_CREDIT_HISTORY)
+          document.getElementById('bureau-gate-eligible').style.display = 'block';
+          // Pre-fill eKYC fields with what the user already entered
+          const ekycNameInput = document.getElementById('ekyc-name-input');
+          const ekycPanInput = document.getElementById('ekyc-pan-input');
+          if (ekycNameInput && name) ekycNameInput.value = name;
+          if (ekycPanInput && pan) ekycPanInput.value = pan;
+          // Store name for consent signature pre-fill
+          if (name) state.signatureName = name;
+        }
+      } catch (err) {
+        // API unavailable — default to eligible (fail-open for demo)
+        await new Promise(r => setTimeout(r, 500));
+        document.getElementById('bureau-gate-checking').style.display = 'none';
+        document.getElementById('bureau-gate-eligible').style.display = 'block';
+      }
+    });
+  }
+
+  if (proceedBtn) {
+    proceedBtn.addEventListener('click', () => {
+      navigateTo('consent-screen');
+    });
+  }
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+      // Reset form inputs
+      const nameInput = document.getElementById('bureau-name-input');
+      const panInput = document.getElementById('bureau-pan-input');
+      const dobInput = document.getElementById('bureau-dob-input');
+      const mobileInput = document.getElementById('bureau-mobile-input');
+      if (nameInput) nameInput.value = '';
+      if (panInput) panInput.value = '';
+      if (dobInput) dobInput.value = '';
+      if (mobileInput) mobileInput.value = '';
+      const btn = document.getElementById('bureau-check-btn');
+      if (btn) btn.disabled = true;
+      resetBureauGateUI();
+    });
+  }
 }
 
 /* ================================================================
