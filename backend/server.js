@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const http = require('http');
 const { loadModel, loadPdoCalibration, calculateScore, scoreApplication } = require('./scoring');
 const { analyzeFraud } = require('./fraud');
 const { grantConsent, revokeConsent, getConsentSummary, getAuditLog } = require('./consent');
@@ -281,9 +282,92 @@ function getConfidenceScore(appRecord) {
   return Math.min(95, confidence);
 }
 
+// ── ML Scoring Service Helper (calls Python service on port 8000) ────────────
+function callMlScoringService(appRecord) {
+  return new Promise((resolve) => {
+    // Build a credit applicant payload from the app's signals + score
+    // We approximate Home Credit features from the available signal ratings
+    const signals = appRecord.signals || {};
+    const psychScore = (signals.psychometric && signals.psychometric.rating) || 50;
+    const mobileScore = (signals.mobile && signals.mobile.rating) || 50;
+    const geoScore = (signals.geo && signals.geo.rating) || 50;
+    const salaryRating = (signals.salaryConsistency && signals.salaryConsistency.rating) || 50;
+    const failedTxRating = (signals.failedTx && signals.failedTx.rating) || 50;
+
+    // Map signal ratings to approximate Home Credit feature ranges
+    const ageYears = 30 + (psychScore / 100) * 20;          // 30–50
+    const daysEmployed = salaryRating >= 67 ? -1825 : 365243; // employed or not
+    const income = appRecord.loanAmount * 2.5;
+    const annuity = appRecord.loanAmount * (appRecord.suggestedRate / 100 / 12);
+    const extSource = (appRecord.score - 300) / 600;         // normalize 300-900 → 0-1
+
+    const payload = JSON.stringify({
+      DAYS_BIRTH: -(ageYears * 365),
+      DAYS_EMPLOYED: daysEmployed,
+      AMT_INCOME_TOTAL: income,
+      AMT_ANNUITY: annuity,
+      AMT_CREDIT: appRecord.loanAmount,
+      AMT_GOODS_PRICE: appRecord.loanAmount * 0.95,
+      EXT_SOURCE_1: extSource,
+      EXT_SOURCE_2: Math.min(1, extSource + 0.05),
+      EXT_SOURCE_3: Math.max(0, extSource - 0.05),
+      CNT_FAM_MEMBERS: 3,
+      CNT_CHILDREN: 1,
+      FLAG_DOCUMENT_SUM: Math.round(mobileScore / 25),
+      REGION_POPULATION_RELATIVE: 0.035,
+      REGION_RATING_CLIENT: geoScore > 70 ? 1 : geoScore > 40 ? 2 : 3,
+      DAYS_LAST_PHONE_CHANGE: -180,
+      AMT_REQ_CREDIT_BUREAU_HOUR: 0,
+      AMT_REQ_CREDIT_BUREAU_DAY: 0,
+      AMT_REQ_CREDIT_BUREAU_WEEK: failedTxRating < 50 ? 3 : 0,
+      AMT_REQ_CREDIT_BUREAU_MON: failedTxRating < 50 ? 5 : 1,
+      AMT_REQ_CREDIT_BUREAU_QRT: 2,
+      AMT_REQ_CREDIT_BUREAU_YEAR: 4,
+      OCCUPATION_TYPE: 'Unknown',
+      NAME_INCOME_TYPE: salaryRating >= 67 ? 'Working' : 'Unemployed',
+      ORGANIZATION_TYPE: 'Business Entity Type 1',
+      NAME_EDUCATION_TYPE: psychScore > 70 ? 'Higher education' : 'Secondary / secondary special',
+      NAME_FAMILY_STATUS: 'Married',
+      NAME_HOUSING_TYPE: geoScore > 60 ? 'House / apartment' : 'Rented apartment',
+      NAME_CONTRACT_TYPE: 'Cash loans'
+    });
+
+    const options = {
+      hostname: '127.0.0.1',
+      port: 8000,
+      path: '/credit/score',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+      timeout: 2000
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve({
+            mlCreditScore: parsed.credit_score,
+            mlRiskLevel: parsed.risk_level,
+            mlDefaultProb: parsed.predicted_default_prob
+          });
+        } catch { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.write(payload);
+    req.end();
+  });
+}
+
 // ── Applications API with Fraud Detection ───────────────────────────────────
-app.get('/api/applications', (req, res) => {
-  const enhancedApps = applications.map(appRecord => {
+app.get('/api/applications', async (req, res) => {
+  // Call Python ML service for all applications in parallel (2s timeout, graceful fallback)
+  const mlResults = await Promise.all(applications.map(a => callMlScoringService(a)));
+
+  const enhancedApps = applications.map((appRecord, idx) => {
     // Run fraud analysis using the new fraud module
     let deviceCount = 1;
     let velocityMismatch = false;
@@ -355,7 +439,11 @@ app.get('/api/applications', (req, res) => {
       fraudAnalysis: fraudResult,
       compositeBreakdown,
       compositeWeights,
-      sourceCount
+      sourceCount,
+      // ── Real ML score from Python fraud_credit_service ──
+      mlCreditScore: mlResults[idx] ? mlResults[idx].mlCreditScore : null,
+      mlRiskLevel:   mlResults[idx] ? mlResults[idx].mlRiskLevel   : null,
+      mlDefaultProb: mlResults[idx] ? mlResults[idx].mlDefaultProb : null
     };
   });
   res.json({

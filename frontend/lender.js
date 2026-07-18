@@ -759,9 +759,20 @@ function renderTable() {
       nameCellContent += ` <span style="margin-left: 8px; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(230, 57, 70, 0.15); color: #FF4D4D; border: 1px solid rgba(230, 57, 70, 0.3); vertical-align: middle; white-space: nowrap;">⚠️ Geo Violations</span>`;
     }
 
+    // ML Credit Score badge from Python service
+    let mlScoreBadge = '';
+    if (app.mlCreditScore) {
+      const mlColor = app.mlRiskLevel === 'Low' ? '#02C39A' : app.mlRiskLevel === 'Medium' ? '#F4A261' : '#FF4D4D';
+      mlScoreBadge = `<span style="
+        display:inline-block; margin-left:6px; font-size:0.62rem; font-weight:700;
+        padding:2px 7px; border-radius:4px; vertical-align:middle; white-space:nowrap;
+        background:rgba(255,255,255,0.06); border:1px solid ${mlColor}40; color:${mlColor};
+      ">🤖 ML ${app.mlCreditScore} · ${app.mlRiskLevel}</span>`;
+    }
+
     tr.innerHTML = `
       <td style="font-weight: 600;">${nameCellContent}</td>
-      <td style="font-weight: 700;">${app.score}</td>
+      <td style="font-weight: 700;">${app.score}${mlScoreBadge}</td>
       <td style="color: ${confidenceColor}; font-weight: 700;">${app.confidence}%</td>
       <td>₹${app.loanAmount.toLocaleString('en-IN')}</td>
       <td style="color: var(--secondary); font-weight: 600;">${app.suggestedRate}% p.a.</td>
