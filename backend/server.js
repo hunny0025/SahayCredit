@@ -359,7 +359,8 @@ function callMlScoringService(appRecord) {
           resolve({
             mlCreditScore: parsed.credit_score,
             mlRiskLevel: parsed.risk_level,
-            mlDefaultProb: parsed.predicted_default_prob
+            mlDefaultProb: parsed.predicted_default_prob,
+            mlReasonCodes: parsed.reason_codes
           });
         } catch { resolve(null); }
       });
@@ -433,7 +434,8 @@ app.get('/api/applications', async (req, res) => {
       // ── Real ML score from Python fraud_credit_service ──
       mlCreditScore: mlResults[idx] ? mlResults[idx].mlCreditScore : null,
       mlRiskLevel:   mlResults[idx] ? mlResults[idx].mlRiskLevel   : null,
-      mlDefaultProb: mlResults[idx] ? mlResults[idx].mlDefaultProb : null
+      mlDefaultProb: mlResults[idx] ? mlResults[idx].mlDefaultProb : null,
+      mlReasonCodes: mlResults[idx] ? mlResults[idx].mlReasonCodes : null
     };
   });
   res.json({
@@ -699,6 +701,7 @@ app.post('/api/score', async (req, res) => {
       extendedResult.mlCreditScore = mlResult.mlCreditScore;
       extendedResult.mlRiskLevel   = mlResult.mlRiskLevel;
       extendedResult.mlDefaultProb = mlResult.mlDefaultProb;
+      extendedResult.mlReasonCodes = mlResult.mlReasonCodes;
     }
 
     // Update the stored application with ML fields too (for lender dashboard)
@@ -708,6 +711,7 @@ app.post('/api/score', async (req, res) => {
         applications[idx].mlCreditScore = mlResult.mlCreditScore;
         applications[idx].mlRiskLevel   = mlResult.mlRiskLevel;
         applications[idx].mlDefaultProb = mlResult.mlDefaultProb;
+        applications[idx].mlReasonCodes = mlResult.mlReasonCodes;
       }
     }
 

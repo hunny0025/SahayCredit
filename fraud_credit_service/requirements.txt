@@ -5,3 +5,4 @@ lightgbm==4.5.0
 pandas==2.2.2
 numpy==1.26.4
 pydantic==2.9.2
+shap==0.46.0

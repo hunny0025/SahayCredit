@@ -767,7 +767,13 @@ function renderTable() {
         display:inline-block; margin-left:6px; font-size:0.62rem; font-weight:700;
         padding:2px 7px; border-radius:4px; vertical-align:middle; white-space:nowrap;
         background:rgba(255,255,255,0.06); border:1px solid ${mlColor}40; color:${mlColor};
-      ">🤖 ML ${app.mlCreditScore} · ${app.mlRiskLevel}</span>`;
+      ">🤖 ML ${app.mlCreditScore} · ${app.mlRiskLevel}</span>
+      <button class="btn-ml-explain" data-id="${app.id}" style="
+        background: rgba(2, 195, 154, 0.1); border: 1px solid var(--secondary);
+        border-radius: 4px; color: var(--secondary); font-size: 0.58rem;
+        padding: 1px 5px; cursor: pointer; font-weight: 700; vertical-align: middle;
+        margin-left: 4px; transition: all 0.2s ease;
+      ">Why?</button>`;
     }
 
     tr.innerHTML = `
@@ -810,9 +816,17 @@ function renderTable() {
       }
     });
 
-    // Row selection trigger (preventing bubble if badge clicked)
+    const explainBtn = tr.querySelector('.btn-ml-explain');
+    if (explainBtn) {
+      explainBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showMlExplanationModal(app);
+      });
+    }
+
+    // Row selection trigger (preventing bubble if badge or explain clicked)
     tr.addEventListener('click', (e) => {
-      if (!e.target.classList.contains('fraud-badge')) {
+      if (!e.target.classList.contains('fraud-badge') && !e.target.classList.contains('btn-ml-explain')) {
         selectApplicant(app);
       }
     });
@@ -1874,4 +1888,153 @@ function drawCalibrationPlot(svg) {
 
 function normalPdf(x, mean, std) {
   return (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
+}
+
+function formatFeatureName(feat) {
+  const maps = {
+    ext_source_1: "External Score 1",
+    ext_source_2: "External Score 2",
+    ext_source_3: "External Score 3",
+    goods_price_ratio: "Goods-to-Credit Price Ratio",
+    cash_flow_stability: "Cash Flow Stability",
+    spending_ratio: "Debt-to-Income Spending Ratio",
+    savings_ratio: "Savings Ratio",
+    credit_income_ratio: "Credit-to-Income Ratio",
+    salary_consistency: "Salary Consistency Rating",
+    income_stability: "Income Stability Rating",
+    monthly_income: "Monthly Income",
+    age_years: "Applicant Age",
+    family_size: "Family Size",
+    has_children: "Has Children",
+    documents_provided: "Submitted Documents Count",
+    region_population_relative: "Region Population Density",
+    region_rating: "Region Rating",
+    days_last_phone_change: "Days Since Phone Change",
+    enquiries_hour: "Credit Bureau Enquiries (Hour)",
+    enquiries_day: "Credit Bureau Enquiries (Day)",
+    enquiries_week: "Credit Bureau Enquiries (Week)",
+    enquiries_mon: "Credit Bureau Enquiries (Month)",
+    enquiries_qrt: "Credit Bureau Enquiries (Quarter)",
+    enquiries_year: "Credit Bureau Enquiries (Year)",
+    occupation_type: "Occupation Type Target Rating",
+    income_type: "Income Type Target Rating",
+    organization_type: "Organization Type Target Rating",
+    education_type: "Education Type Target Rating",
+    family_status: "Family Status Target Rating",
+    housing_type: "Housing Type Target Rating",
+    contract_type: "Contract Type Target Rating"
+  };
+  return maps[feat] || feat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function showMlExplanationModal(app) {
+  // Check if modal already exists, remove it
+  const existing = document.getElementById('ml-explain-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'ml-explain-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(10, 25, 47, 0.75);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10000;
+    opacity: 0; transition: opacity 0.3s ease;
+  `;
+
+  const reasonCodes = app.mlReasonCodes || [];
+
+  let contentHtml = '';
+  if (reasonCodes.length === 0) {
+    contentHtml = `
+      <p style="text-align: center; color: var(--text-muted); font-size: 0.95rem; margin: 20px 0;">
+        Explanation unavailable (No SHAP reason codes were returned by the ML model).
+      </p>
+    `;
+  } else {
+    contentHtml = `
+      <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
+        ${reasonCodes.map(rc => {
+          const featName = formatFeatureName(rc.feature);
+          const isIncrease = rc.impact === 'increases_risk';
+          const impactLabel = isIncrease ? 'increases risk' : 'decreases risk';
+          const impactColor = isIncrease ? '#FF4D4D' : '#02C39A';
+          const valFormatted = typeof rc.value === 'number' ? rc.value.toFixed(2) : (rc.value || 'N/A');
+          
+          return `
+            <div style="
+              display: flex; align-items: center; justify-content: space-between;
+              padding: 10px 14px; background: rgba(255,255,255,0.02);
+              border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);
+            ">
+              <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">${featName}</span>
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Value: ${valFormatted}</span>
+              </div>
+              <span style="
+                font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+                color: ${impactColor}; border: 1px solid ${impactColor}30;
+                background: ${impactColor}10; padding: 2px 8px; border-radius: 4px;
+              ">${impactLabel}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  modal.innerHTML = `
+    <div style="
+      background: #0d1e36;
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 480px; width: 90%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      position: relative;
+      transform: scale(0.9); transition: transform 0.3s ease;
+      font-family: 'Outfit', sans-serif;
+    ">
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--secondary);">
+          🤖 ML Explanation (${app.name})
+        </h3>
+        <button id="ml-explain-close-btn" style="
+          background: none; border: none; font-size: 1.5rem; color: var(--text-muted);
+          cursor: pointer; line-height: 1; padding: 0; transition: color 0.2s ease;
+        ">&times;</button>
+      </div>
+
+      ${contentHtml}
+
+      <div style="text-align: right; margin-top: 20px;">
+        <button id="ml-explain-ok-btn" class="btn btn-secondary" style="
+          font-size: 0.8rem; padding: 6px 16px; border-radius: 6px; cursor: pointer;
+          background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.15); color: var(--text-main);
+        ">Close</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Trigger reflow to run animations
+  setTimeout(() => {
+    modal.style.opacity = '1';
+    modal.querySelector('div').style.transform = 'scale(1)';
+  }, 10);
+
+  const closeModal = () => {
+    modal.style.opacity = '0';
+    modal.querySelector('div').style.transform = 'scale(0.9)';
+    setTimeout(() => modal.remove(), 300);
+  };
+
+  modal.querySelector('#ml-explain-close-btn').addEventListener('click', closeModal);
+  modal.querySelector('#ml-explain-ok-btn').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
 }

@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 import lightgbm as lgb
+import shap
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -43,8 +44,10 @@ MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 credit_model = xgb.XGBClassifier()
 credit_model.load_model(os.path.join(MODEL_DIR, "sahaycredit_xgb.json"))
 CREDIT_FEATURES = credit_model.get_booster().feature_names
+CREDIT_EXPLAINER = shap.TreeExplainer(credit_model)
 
 fraud_model = lgb.Booster(model_file=os.path.join(MODEL_DIR, "fraud_model_ieee.txt"))
+FRAUD_EXPLAINER = shap.TreeExplainer(fraud_model)
 
 with open(os.path.join(MODEL_DIR, "target_encoding_maps.json")) as f:
     ENC_MAPS = json.load(f)
@@ -209,6 +212,28 @@ def fraud_prob_to_result(prob: float) -> dict:
     return {"fraud_score": round(percentile, 1), "risk_category": risk}
 
 
+def get_reason_codes(explainer, X_row: pd.DataFrame, top_n: int = 5) -> list:
+    """
+    Real SHAP-based explainability, per the fraud plan's requirement that
+    every prediction include reason codes. Returns the top contributing
+    features with their direction (increases vs decreases risk).
+    """
+    shap_values = explainer.shap_values(X_row)
+    if isinstance(shap_values, list):  # some explainers return [class0, class1]
+        shap_values = shap_values[1]
+    contributions = pd.Series(shap_values[0], index=X_row.columns)
+    top = contributions.reindex(contributions.abs().sort_values(ascending=False).index).head(top_n)
+    return [
+        {
+            "feature": feat,
+            "value": round(float(X_row.iloc[0][feat]), 4) if pd.notna(X_row.iloc[0][feat]) else None,
+            "impact": "increases_risk" if val > 0 else "decreases_risk",
+            "shap_value": round(float(val), 4),
+        }
+        for feat, val in top.items()
+    ]
+
+
 def apply_decision_matrix(credit_risk_level: str, fraud_risk_level: str) -> str:
     matrix = {
         ("Low", "Low"): "Approve",
@@ -236,10 +261,12 @@ def credit_score(applicant: CreditApplicant):
     p_default = float(credit_model.predict_proba(X)[:, 1][0])
     score = prob_to_pdo_score(p_default)
     risk_level = credit_prob_to_risk_level(p_default)
+    reason_codes = get_reason_codes(CREDIT_EXPLAINER, X)
     return {
         "predicted_default_prob": round(p_default, 6),
         "credit_score": score,
         "risk_level": risk_level,
+        "reason_codes": reason_codes,
     }
 
 
@@ -247,7 +274,9 @@ def credit_score(applicant: CreditApplicant):
 def fraud_score(txn: FraudTransaction):
     X = pd.DataFrame([txn.features])
     prob = float(fraud_model.predict(X)[0])
-    return fraud_prob_to_result(prob)
+    result = fraud_prob_to_result(prob)
+    result["reason_codes"] = get_reason_codes(FRAUD_EXPLAINER, X)
+    return result
 
 
 @app.post("/decision")
