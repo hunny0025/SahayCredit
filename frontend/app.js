@@ -2169,6 +2169,45 @@ function renderCalculatedResults() {
       dom.gaugeFill.style.strokeDashoffset = dashOffset;
     }, 100);
   }
+
+  // ── Render ML Credit Score Card (from Python XGBoost service) ───────────
+  const mlCard = document.getElementById('ml-score-card');
+  if (mlCard) {
+    if (data.mlCreditScore) {
+      mlCard.style.display = 'block';
+      document.getElementById('ml-credit-score-val').textContent = data.mlCreditScore;
+
+      const probPct = data.mlDefaultProb !== undefined
+        ? (data.mlDefaultProb * 100).toFixed(1) + '%'
+        : '—';
+      document.getElementById('ml-default-prob').textContent = probPct;
+
+      const riskBadge = document.getElementById('ml-risk-badge');
+      const riskLevel = data.mlRiskLevel || 'Unknown';
+      riskBadge.textContent = riskLevel;
+      if (riskLevel === 'Low') {
+        riskBadge.style.cssText = 'font-size:0.7rem; font-weight:700; padding:2px 10px; border-radius:6px; background:rgba(2,195,154,0.12); color:#02C39A; border:1px solid rgba(2,195,154,0.25);';
+      } else if (riskLevel === 'Medium') {
+        riskBadge.style.cssText = 'font-size:0.7rem; font-weight:700; padding:2px 10px; border-radius:6px; background:rgba(244,162,97,0.12); color:#F4A261; border:1px solid rgba(244,162,97,0.25);';
+      } else {
+        riskBadge.style.cssText = 'font-size:0.7rem; font-weight:700; padding:2px 10px; border-radius:6px; background:rgba(255,77,77,0.12); color:#FF4D4D; border:1px solid rgba(255,77,77,0.25);';
+      }
+
+      const isHiML = lang === 'hi';
+      const descMap = {
+        Low:    isHiML ? 'मशीन लर्निंग मॉडल आपको कम जोखिम वाला उधारकर्ता मानता है। ऋण स्वीकृति की उच्च संभावना।'
+                       : 'The ML model classifies you as a low-risk borrower. High likelihood of loan approval.',
+        Medium: isHiML ? 'मध्यम जोखिम — कुछ अतिरिक्त सत्यापन की आवश्यकता हो सकती है।'
+                       : 'Medium risk — some additional verification may be required.',
+        High:   isHiML ? 'उच्च जोखिम — लेंडर अतिरिक्त दस्तावेज़ीकरण का अनुरोध कर सकते हैं।'
+                       : 'Higher risk — lenders may request additional documentation.'
+      };
+      document.getElementById('ml-card-desc').textContent = descMap[riskLevel] || '';
+      if (isHiML) document.getElementById('ml-card-title').textContent = 'एमएल क्रेडिट स्कोर';
+    } else {
+      mlCard.style.display = 'none';
+    }
+  }
 }
 
 // Reset Assessment

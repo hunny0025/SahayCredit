@@ -548,7 +548,7 @@ app.get('/api/consent-audit', (req, res) => {
 });
 
 // ── Score API (main borrower scoring endpoint) ──────────────────────────────
-app.post('/api/score', (req, res) => {
+app.post('/api/score', async (req, res) => {
   try {
     const { answers, borrowerId, ecommerceData, merchantData, isMSME } = req.body;
 
@@ -677,6 +677,37 @@ app.post('/api/score', (req, res) => {
         applications[existingIndex] = newApplication;
       } else {
         applications.push(newApplication);
+      }
+    }
+
+    // ── Call Python ML scoring service for this real borrower ──────────────
+    const mlResult = await callMlScoringService({
+      score: extendedResult.score,
+      loanAmount: isMSME ? 150000 : 35000,
+      suggestedRate: extendedResult.interestRate || 18,
+      signals: {
+        psychometric: { rating: Math.round(extendedResult.dimensions?.financialDiscipline || 70) },
+        mobile:        { rating: 75 },
+        geo:           { rating: 85 },
+        salaryConsistency: { rating: 65 },
+        failedTx:      { rating: 100 }
+      }
+    });
+
+    // Attach ML result to both the response and the stored application record
+    if (mlResult) {
+      extendedResult.mlCreditScore = mlResult.mlCreditScore;
+      extendedResult.mlRiskLevel   = mlResult.mlRiskLevel;
+      extendedResult.mlDefaultProb = mlResult.mlDefaultProb;
+    }
+
+    // Update the stored application with ML fields too (for lender dashboard)
+    if (borrowerId) {
+      const idx = applications.findIndex(a => a.id === borrowerId);
+      if (idx >= 0 && mlResult) {
+        applications[idx].mlCreditScore = mlResult.mlCreditScore;
+        applications[idx].mlRiskLevel   = mlResult.mlRiskLevel;
+        applications[idx].mlDefaultProb = mlResult.mlDefaultProb;
       }
     }
 
