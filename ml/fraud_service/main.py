@@ -273,11 +273,25 @@ def credit_score(applicant: CreditApplicant):
 
 @app.post("/fraud/score")
 def fraud_score(txn: FraudTransaction):
-    X = pd.DataFrame([txn.features])
-    prob = float(fraud_model.predict(X)[0])
-    result = fraud_prob_to_result(prob)
-    result["reason_codes"] = get_reason_codes(FRAUD_EXPLAINER, X)
-    return result
+    try:
+        X = pd.DataFrame([txn.features])
+        # Ensure all columns required by the model exist in the DataFrame (filled with NaN if missing)
+        model_features = fraud_model.feature_name()
+        for col in model_features:
+            if col not in X.columns:
+                X[col] = np.nan
+        X = X[model_features]
+        
+        prob = float(fraud_model.predict(X)[0])
+        result = fraud_prob_to_result(prob)
+        result["reason_codes"] = get_reason_codes(FRAUD_EXPLAINER, X)
+        return result
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
 
 
 @app.post("/decision")
