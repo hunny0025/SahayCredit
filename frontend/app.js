@@ -509,6 +509,10 @@ let state = {
   scoreData: null,
   consents: { upi: true, bills: true, ecom: true, location: true, gst: true },
   signatureName: '',
+  compareSelection: {
+    loanA: 0,
+    loanB: 1
+  },
   
   // Simulator Parameters
   simState: {
@@ -554,9 +558,12 @@ const dom = {
   lendersList: document.getElementById('lenders-list'),
   chartTitle: document.getElementById('chart-title'),
   chartSubtitle: document.getElementById('chart-subtitle'),
+  chartSubtitle: document.getElementById('chart-subtitle'),
   costChartBars: document.getElementById('cost-chart-bars'),
   compBackBtn: document.getElementById('comp-back-btn'),
   compBackBtnText: document.getElementById('comp-back-btn-text'),
+  loanASelect: document.getElementById('loan-a-select'),
+  loanBSelect: document.getElementById('loan-b-select'),
   
   // EMI Planner Screen
   emiPlannerBtn: document.getElementById('emi-planner-btn'),
@@ -571,6 +578,9 @@ const dom = {
   planDonutChart: document.getElementById('plan-donut-chart'),
   planDonutCenterVal: document.getElementById('plan-donut-center-val'),
   planIncomeInput: document.getElementById('plan-income-input'),
+  savingsGoalInput: document.getElementById('savings-goal-input'),
+  savingsTimeframeInput: document.getElementById('savings-timeframe-input'),
+  savingsRequiredVal: document.getElementById('savings-required-val'),
   planAffordCard: document.getElementById('plan-afford-card'),
   planAffordRatio: document.getElementById('plan-afford-ratio'),
   planAffordStatus: document.getElementById('plan-afford-status'),
@@ -915,6 +925,38 @@ function bindEvents() {
     state.plannerState.income = parseInt(e.target.value) || 0;
     updatePlannerUI();
   });
+
+  if (dom.savingsGoalInput) {
+    dom.savingsGoalInput.addEventListener('input', () => updatePlannerUI());
+  }
+  if (dom.savingsTimeframeInput) {
+    dom.savingsTimeframeInput.addEventListener('input', () => updatePlannerUI());
+  }
+
+  const downloadPdfBtn = document.getElementById('download-pdf-btn');
+  if (downloadPdfBtn) {
+    downloadPdfBtn.addEventListener('click', () => {
+      const origText = downloadPdfBtn.innerHTML;
+      downloadPdfBtn.innerHTML = 'Generating PDF...';
+      const element = document.getElementById('result-screen');
+      const opt = {
+        margin:       0.2,
+        filename:     'SahayCredit_Financial_Report.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      
+      if (window.html2pdf) {
+        html2pdf().set(opt).from(element).save().then(() => {
+          downloadPdfBtn.innerHTML = origText;
+        });
+      } else {
+        alert('PDF generator not loaded yet. Please check connection and try again.');
+        downloadPdfBtn.innerHTML = origText;
+      }
+    });
+  }
 
   dom.planTenureGroup.querySelectorAll('.tenure-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -2255,6 +2297,7 @@ function renderCalculatedResults() {
     }
   }
 
+
   // Calculate and Render Confidence Score Components
   let confidence = 40; // base confidence
   if (data.compositeConfidence !== undefined) {
@@ -2597,10 +2640,30 @@ function renderComparisonScreen() {
       bestMatchId = o.id;
     }
   });
+
+  // Populate Selectors if empty
+  if (dom.loanASelect && dom.loanASelect.options.length === 0) {
+    offers.forEach(o => {
+      dom.loanASelect.add(new Option(`${o.logo} ${o.name}`, o.id, false, o.id === state.compareSelection.loanA));
+      dom.loanBSelect.add(new Option(`${o.logo} ${o.name}`, o.id, false, o.id === state.compareSelection.loanB));
+    });
+
+    dom.loanASelect.addEventListener('change', (e) => {
+      state.compareSelection.loanA = parseInt(e.target.value);
+      renderComparisonScreen();
+    });
+    dom.loanBSelect.addEventListener('change', (e) => {
+      state.compareSelection.loanB = parseInt(e.target.value);
+      renderComparisonScreen();
+    });
+  }
+
+  // Filter offers to only the selected Loan A and Loan B
+  const selectedOffers = offers.filter(o => o.id === state.compareSelection.loanA || o.id === state.compareSelection.loanB);
   
-  // Render cards in DOM
+  // Render cards in DOM (Grid format set in HTML)
   dom.lendersList.innerHTML = '';
-  offers.forEach(o => {
+  selectedOffers.forEach(o => {
     const isBest = o.id === bestMatchId;
     const selectedTenure = state.lenderTenures[o.id] || 12;
     const card = document.createElement('div');
@@ -2672,13 +2735,13 @@ function renderComparisonScreen() {
   // Render horizontal bar chart comparison
   let maxCost = 0;
   let minCost = Infinity;
-  offers.forEach(o => {
+  selectedOffers.forEach(o => {
     if (o.totalCost > maxCost) maxCost = o.totalCost;
     if (o.totalCost < minCost) minCost = o.totalCost;
   });
   
   dom.costChartBars.innerHTML = '';
-  offers.forEach(o => {
+  selectedOffers.forEach(o => {
     const pct = (o.totalCost / maxCost) * 100;
     const isLowest = o.totalCost === minCost;
     const row = document.createElement('div');
@@ -2777,11 +2840,28 @@ function updatePlannerUI() {
   dom.planDonutCenterVal.textContent = pctPrincipal + '%';
   document.getElementById('plan-donut-center-lbl').textContent = lang === 'en' ? 'Principal' : 'मूलधन';
 
+  // Savings Goal Planner Calculation
+  let reqSavings = 0;
+  if (dom.savingsGoalInput && dom.savingsTimeframeInput) {
+    const goal = parseFloat(dom.savingsGoalInput.value) || 0;
+    const timeframe = parseFloat(dom.savingsTimeframeInput.value) || 1;
+    reqSavings = goal / timeframe;
+    if (dom.savingsRequiredVal) {
+      dom.savingsRequiredVal.textContent = '₹' + Math.round(reqSavings).toLocaleString('en-IN');
+    }
+  }
+
   // Affordability Check
   let emiPercent = 0;
-  if (income > 0) {
-    emiPercent = (emi / income) * 100;
+  // Subtract required savings from available income to assess TRUE affordability
+  const availableIncome = Math.max(0, income - reqSavings);
+  
+  if (availableIncome > 0) {
+    emiPercent = (emi / availableIncome) * 100;
+  } else if (income > 0) {
+    emiPercent = 100; // Debt burden exceeds income if required savings > income
   }
+
   dom.planAffordRatio.textContent = emiPercent.toFixed(1) + '%';
 
   // Format verdict options

@@ -1381,6 +1381,9 @@
             <button id="restart-btn" class="btn btn-secondary btn-text-only" style="margin-top: 5px;">
               <span id="restart-btn-text">Retake Assessment</span>
             </button>
+            <button id="download-pdf-btn" class="btn btn-primary btn-glow" style="margin-top: 10px; width: 100%; background: #028090; border-color: #028090;">
+              📥 <span id="download-pdf-btn-text">One-Click Financial Report (PDF)</span>
+            </button>
           </div>
         </section>
 
@@ -1552,6 +1555,114 @@
             </div>
           </div>
 
+          <!-- Spending Analytics Section -->
+          <div class="chart-card" style="margin-bottom: 25px; padding: 20px 15px; background: rgba(27, 38, 59, 0.7); border-radius: 20px; border: 1px solid rgba(255,255,255,0.08);">
+            
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h4 class="breakdown-title" id="lbl-analytics-title" style="margin: 0; font-size: 1.1rem;">Analytics</h4>
+              <select style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 4px 10px; font-size: 0.75rem; outline: none; appearance: none; cursor: pointer;">
+                <option>Month ⌄</option>
+              </select>
+            </div>
+            
+            <!-- Segmented Donut Chart -->
+            <div style="position: relative; width: 180px; height: 180px; margin: 0 auto 20px;">
+              <svg width="100%" height="100%" viewBox="0 0 100 100" style="transform: rotate(-90deg);">
+                <!-- C = 2 * Math.PI * 40 = ~251.3 -->
+                <!-- Base track (optional, hidden for pure segment look) -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="8"></circle>
+                
+                <!-- Travel 28% (70.3/251.3) offset=0. Color: Orange (#F4A261) -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#F4A261" stroke-width="8" stroke-dasharray="64.3 187" stroke-dashoffset="0" stroke-linecap="round"></circle>
+                
+                <!-- Shop 32% (80.4/251.3) offset = -70.3 - gap(6) = -76.3. Color: Dark Navy (#0f172a, let's use a lighter blue for dark mode contrast #38bdf8) -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#38bdf8" stroke-width="8" stroke-dasharray="74.4 176.9" stroke-dashoffset="-76.3" stroke-linecap="round"></circle>
+                
+                <!-- Transfer 14% (35.1/251.3) offset = -76.3 - 80.4 - gap(6) = -162.7. Color: Mint (#2ee68b) -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#2ee68b" stroke-width="8" stroke-dasharray="29.1 222.2" stroke-dashoffset="-162.7" stroke-linecap="round"></circle>
+                
+                <!-- Rest/Other 26% (65.3/251.3) offset = -162.7 - 35.1 - gap(6) = -203.8. Color: Purple (#a78bfa) -->
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#a78bfa" stroke-width="8" stroke-dasharray="35.5 215.8" stroke-dashoffset="-203.8" stroke-linecap="round"></circle>
+              </svg>
+              <!-- Center Text -->
+              <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Total amount</span>
+                <span style="font-size: 1.3rem; font-weight: 800; color: var(--text-main);">$13,320.75</span>
+              </div>
+            </div>
+
+            <!-- Category Pills -->
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 25px;">
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8;"></span>
+                <span style="font-size: 0.7rem; color: var(--text-main);">Shop</span>
+                <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-main);">32%</span>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #2ee68b;"></span>
+                <span style="font-size: 0.7rem; color: var(--text-main);">Transfer</span>
+                <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-main);">14%</span>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #F4A261;"></span>
+                <span style="font-size: 0.7rem; color: var(--text-main);">Travel</span>
+                <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-main);">28%</span>
+              </div>
+            </div>
+
+            <!-- Transactions Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+              <h5 style="margin: 0; font-size: 1rem; color: var(--text-main);">Transactions</h5>
+              <span style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;">See all</span>
+            </div>
+
+            <!-- Transactions List -->
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Transaction 1 -->
+              <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="width: 38px; height: 38px; background: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                    🏠
+                  </div>
+                  <div style="display: flex; flex-direction: column;">
+                    <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Airbnb</span>
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">Travel</span>
+                  </div>
+                </div>
+                <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);">-$100.00</span>
+              </div>
+              
+              <!-- Transaction 2 -->
+              <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="width: 38px; height: 38px; background: #1a1a24; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #fff;">
+                    VISA
+                  </div>
+                  <div style="display: flex; flex-direction: column;">
+                    <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Anton E.</span>
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">Transfer</span>
+                  </div>
+                </div>
+                <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);">-$68.00</span>
+              </div>
+              
+              <!-- Transaction 3 -->
+              <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="width: 38px; height: 38px; background: #1e3a8a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                    🎮
+                  </div>
+                  <div style="display: flex; flex-direction: column;">
+                    <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">PS Store</span>
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">Electronics</span>
+                  </div>
+                </div>
+                <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);">-$143.00</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Report Box Preview -->
           <div id="report-box" class="card-glow" style="display: none; padding: 18px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 25px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
@@ -1584,8 +1695,24 @@
             <p id="comp-tagline" class="result-desc">Choose the best pre-approved offer matching your profile.</p>
           </div>
 
-          <!-- Lender Comparison Cards List -->
-          <div class="lenders-list" id="lenders-list">
+          <!-- Side-by-Side Loan Selection -->
+          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <div style="flex: 1;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 5px;">Compare Loan A</label>
+              <select id="loan-a-select" style="width: 100%; background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; outline: none; cursor: pointer;">
+                <!-- Populated via app.js -->
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 5px;">Against Loan B</label>
+              <select id="loan-b-select" style="width: 100%; background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; outline: none; cursor: pointer;">
+                <!-- Populated via app.js -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Lender Comparison Cards List (Side-by-side CSS layout is handled in app.js or existing lenders-list styles) -->
+          <div class="lenders-list" id="lenders-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <!-- Populated dynamically via app.js -->
           </div>
 
@@ -1694,6 +1821,25 @@
             <div class="form-group">
               <label id="lbl-monthly-income" style="font-size: 0.8rem; font-weight: 600; color: var(--text-sub); display: block; margin-bottom: 6px;">Your Monthly Income</label>
               <input type="number" id="plan-income-input" class="range-input" style="width: 100%; border-radius: 8px; text-align: left; padding: 10px; background: var(--bg-input-glass); border: 1px solid var(--border-glass); color: var(--text-main);" placeholder="e.g. 50000" value="35000">
+            </div>
+
+            <!-- Savings Goal Planner Box -->
+            <div class="form-group" style="margin-top: 15px; padding: 12px; background: rgba(96, 165, 250, 0.05); border: 1px solid rgba(96, 165, 250, 0.2); border-radius: 8px;">
+              <h5 style="margin: 0 0 8px 0; font-size: 0.85rem; color: #60a5fa; display: flex; align-items: center; gap: 6px;">🎯 Savings Goal Planner</h5>
+              <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <div style="flex: 1;">
+                  <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Target Goal (₹)</label>
+                  <input type="number" id="savings-goal-input" class="range-input" style="width: 100%; border-radius: 6px; padding: 6px; background: var(--bg-deep); border: 1px solid var(--border-glass); color: var(--text-main); font-size: 0.75rem;" placeholder="e.g. 500000" value="500000">
+                </div>
+                <div style="flex: 1;">
+                  <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Timeframe (Months)</label>
+                  <input type="number" id="savings-timeframe-input" class="range-input" style="width: 100%; border-radius: 6px; padding: 6px; background: var(--bg-deep); border: 1px solid var(--border-glass); color: var(--text-main); font-size: 0.75rem;" placeholder="e.g. 36" value="36">
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(96, 165, 250, 0.3); padding-top: 8px;">
+                <span style="font-size: 0.7rem; color: var(--text-sub);">Req. Monthly Savings:</span>
+                <span id="savings-required-val" style="font-size: 0.8rem; font-weight: 700; color: #60a5fa;">₹13,889</span>
+              </div>
             </div>
 
             <div id="plan-afford-card" class="psych-summary-box" style="margin-top: 14px; border: 1px solid var(--border-glass); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px; background: rgba(2, 195, 154, 0.05);">
@@ -2020,7 +2166,7 @@
 
   </div> <!-- Close page-wrapper -->
 
-  <!-- Custom logic -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
