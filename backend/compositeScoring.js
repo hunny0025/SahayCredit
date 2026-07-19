@@ -10,17 +10,20 @@
  *   - Merchant/business ratings (if consented AND MSME)
  *   - Behaviour Risk Score from AA transaction data (if consented)
  *
- * The core financial model is ALWAYS the dominant anchor (≥60% weight,
+ * The core financial model is ALWAYS the dominant anchor (≥40% weight,
  * in all consent scenarios). Alternative data can only IMPROVE the overall
  * picture — it adds resolution, not risk. If a borrower doesn't consent
  * to sharing alt data, they still get a score from the core model alone.
  * No penalty for opting out.
  *
- * WEIGHT SCHEDULE:
- *   Core only:            100% core
- *   Core + 1 alt source:  75% core / 25% alt
- *   Core + 2 alt sources: 60% core / 20% alt / 20% alt
- *   Core + 3 alt sources: 60% core / 13% alt / 13% alt / 14% alt
+ * WEIGHT SCHEDULE (behaviour-first for thin-file borrowers):
+ *   Core only:                         100% core
+ *   Core + Behaviour:                   60% core / 40% behaviour
+ *   Core + Behaviour + E-commerce:      50% core / 35% behaviour / 15% ecommerce
+ *   Core + Behaviour + Merchant:        50% core / 35% behaviour / 15% merchant
+ *   Core + Behaviour + Merchant + Ecom: 40% core / 35% behaviour / 15% merchant / 10% ecommerce
+ *
+ *   Fallback (alt without behaviour):   70% core / 30% split across alts
  *
  * CONFIDENCE SCORE:
  *   1 source  → 55% confidence (Moderate)
@@ -83,18 +86,27 @@ function computeCompositeScore(coreScore, ecommerceResult, merchantResult, behav
   if (hasMerchant) altSources.push('merchant');
   if (hasBehaviour) altSources.push('behaviour');
 
-  if (altCount === 1) {
-    weights = { core: 0.75 };
-    weights[altSources[0]] = 0.25;
-  } else if (altCount === 2) {
-    weights = { core: 0.60 };
-    weights[altSources[0]] = 0.20;
-    weights[altSources[1]] = 0.20;
-  } else if (altCount === 3) {
-    weights = { core: 0.60 };
-    weights[altSources[0]] = 0.13;
-    weights[altSources[1]] = 0.13;
-    weights[altSources[2]] = 0.14;
+  if (hasBehaviour && hasEcom && hasMerchant) {
+    // All 4 sources: Core 40% + Behaviour 35% + Merchant 15% + E-commerce 10%
+    weights = { core: 0.40, behaviour: 0.35, merchant: 0.15, ecommerce: 0.10 };
+  } else if (hasBehaviour && hasMerchant) {
+    // Core + Behaviour + Merchant: 50/35/15
+    weights = { core: 0.50, behaviour: 0.35, merchant: 0.15 };
+  } else if (hasBehaviour && hasEcom) {
+    // Core + Behaviour + E-commerce: 50/35/15
+    weights = { core: 0.50, behaviour: 0.35, ecommerce: 0.15 };
+  } else if (hasBehaviour) {
+    // Core + Behaviour only: 60/40
+    weights = { core: 0.60, behaviour: 0.40 };
+  } else if (hasEcom && hasMerchant) {
+    // Core + E-commerce + Merchant (no behaviour): 70/15/15
+    weights = { core: 0.70, ecommerce: 0.15, merchant: 0.15 };
+  } else if (hasEcom) {
+    // Core + E-commerce only (no behaviour): 70/30
+    weights = { core: 0.70, ecommerce: 0.30 };
+  } else if (hasMerchant) {
+    // Core + Merchant only (no behaviour): 70/30
+    weights = { core: 0.70, merchant: 0.30 };
   }
 
   // Compute weighted composite
