@@ -41,10 +41,10 @@ MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 # Load models + encoding maps once, at startup
 # ============================================================
 
-credit_model = xgb.XGBClassifier()
-credit_model.load_model(os.path.join(MODEL_DIR, "sahaycredit_xgb.json"))
-CREDIT_FEATURES = credit_model.get_booster().feature_names
-CREDIT_EXPLAINER = shap.TreeExplainer(credit_model)
+credit_booster = xgb.Booster()
+credit_booster.load_model(os.path.join(MODEL_DIR, "sahaycredit_xgb.json"))
+CREDIT_FEATURES = credit_booster.feature_names
+CREDIT_EXPLAINER = shap.TreeExplainer(credit_booster)
 
 fraud_model = lgb.Booster(model_file=os.path.join(MODEL_DIR, "fraud_model_ieee.txt"))
 FRAUD_EXPLAINER = shap.TreeExplainer(fraud_model)
@@ -258,7 +258,8 @@ def health():
 @app.post("/credit/score")
 def credit_score(applicant: CreditApplicant):
     X = build_credit_features(applicant)
-    p_default = float(credit_model.predict_proba(X)[:, 1][0])
+    dmat = xgb.DMatrix(X, feature_names=CREDIT_FEATURES)
+    p_default = float(credit_booster.predict(dmat)[0])
     score = prob_to_pdo_score(p_default)
     risk_level = credit_prob_to_risk_level(p_default)
     reason_codes = get_reason_codes(CREDIT_EXPLAINER, X)
