@@ -11,6 +11,31 @@
         {
           "key": "NODE_ENV",
           "value": "production"
+        },
+        {
+          "key": "ML_SERVICE_URL",
+          "fromService": {
+            "type": "web",
+            "name": "sahaycredit-ml",
+            "property": "url"
+          }
+        }
+      ],
+      "autoDeploy": true,
+      "repo": "https://github.com/hunny0025/SahayCredit.git",
+      "branch": "main"
+    },
+    {
+      "type": "web",
+      "runtime": "python",
+      "name": "sahaycredit-ml",
+      "plan": "free",
+      "buildCommand": "pip install -r ml/fraud_service/requirements.txt",
+      "startCommand": "uvicorn ml.fraud_service.main:app --host 0.0.0.0 --port $PORT",
+      "envVars": [
+        {
+          "key": "PYTHON_VERSION",
+          "value": "3.11.0"
         }
       ],
       "autoDeploy": true,

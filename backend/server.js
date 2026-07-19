@@ -297,11 +297,57 @@ function getConfidenceScore(appRecord) {
   return Math.min(95, confidence);
 }
 
-// ── ML Scoring Service Helper (calls Python service on port 8000) ────────────
-function callMlScoringService(appRecord) {
+// ── ML Service URL Configuration ────────────────────────────────────────────
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://127.0.0.1:8000';
+
+/**
+ * Helper: make a POST request to the ML Python service.
+ * Supports both http and https (for Render deployment).
+ */
+function mlServiceRequest(path, payload) {
   return new Promise((resolve) => {
-    // Build a credit applicant payload from the app's signals + score
-    // We approximate Home Credit features from the available signal ratings
+    let mlUrl;
+    try {
+      mlUrl = new URL(ML_SERVICE_URL);
+    } catch (e) {
+      mlUrl = new URL('http://127.0.0.1:8000');
+    }
+
+    const isHttps = mlUrl.protocol === 'https:';
+    const client = isHttps ? require('https') : require('http');
+    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+    const options = {
+      hostname: mlUrl.hostname,
+      port: mlUrl.port || (isHttps ? 443 : 80),
+      path: path,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payloadStr) },
+      timeout: 5000
+    };
+
+    const req = client.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch { resolve(null); }
+      });
+    });
+    req.on('error', (err) => {
+      console.warn(`[ML Service] ${path} unreachable:`, err.message);
+      resolve(null);
+    });
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.write(payloadStr);
+    req.end();
+  });
+}
+
+// ── ML Credit Scoring Service Helper ────────────────────────────────────────
+function callMlScoringService(appRecord) {
+  return new Promise(async (resolve) => {
     const signals = appRecord.signals || {};
     const psychScore = (signals.psychometric && signals.psychometric.rating) || 50;
     const mobileScore = (signals.mobile && signals.mobile.rating) || 50;
@@ -309,14 +355,13 @@ function callMlScoringService(appRecord) {
     const salaryRating = (signals.salaryConsistency && signals.salaryConsistency.rating) || 50;
     const failedTxRating = (signals.failedTx && signals.failedTx.rating) || 50;
 
-    // Map signal ratings to approximate Home Credit feature ranges
-    const ageYears = 30 + (psychScore / 100) * 20;          // 30–50
-    const daysEmployed = salaryRating >= 67 ? -1825 : 365243; // employed or not
+    const ageYears = 30 + (psychScore / 100) * 20;
+    const daysEmployed = salaryRating >= 67 ? -1825 : 365243;
     const income = appRecord.loanAmount * 2.5;
     const annuity = appRecord.loanAmount * (appRecord.suggestedRate / 100 / 12);
-    const extSource = (appRecord.score - 300) / 600;         // normalize 300-900 → 0-1
+    const extSource = (appRecord.score - 300) / 600;
 
-    const payload = JSON.stringify({
+    const payload = {
       DAYS_BIRTH: -(ageYears * 365),
       DAYS_EMPLOYED: daysEmployed,
       AMT_INCOME_TOTAL: income,
@@ -345,43 +390,71 @@ function callMlScoringService(appRecord) {
       NAME_FAMILY_STATUS: 'Married',
       NAME_HOUSING_TYPE: geoScore > 60 ? 'House / apartment' : 'Rented apartment',
       NAME_CONTRACT_TYPE: 'Cash loans'
-    });
-
-    const options = {
-      hostname: '127.0.0.1',
-      port: 8000,
-      path: '/credit/score',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
-      timeout: 2000
     };
 
-    const req = http.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          resolve({
-            mlCreditScore: parsed.credit_score,
-            mlRiskLevel: parsed.risk_level,
-            mlDefaultProb: parsed.predicted_default_prob,
-            mlReasonCodes: parsed.reason_codes
-          });
-        } catch { resolve(null); }
+    const parsed = await mlServiceRequest('/credit/score', payload);
+    if (parsed && parsed.credit_score !== undefined) {
+      resolve({
+        mlCreditScore: parsed.credit_score,
+        mlRiskLevel: parsed.risk_level,
+        mlDefaultProb: parsed.predicted_default_prob,
+        mlReasonCodes: parsed.reason_codes
       });
-    });
-    req.on('error', () => resolve(null));
-    req.on('timeout', () => { req.destroy(); resolve(null); });
-    req.write(payload);
-    req.end();
+    } else {
+      resolve(null);
+    }
+  });
+}
+
+// ── ML Fraud Scoring Service Helper ─────────────────────────────────────────
+/**
+ * Calls POST /fraud/score on the Python ML service.
+ * Builds a simplified IEEE-CIS-style feature dict from the borrower's signals.
+ * Returns { mlFraudScore, mlFraudRisk, mlFraudReasonCodes } or null on failure.
+ */
+function callMlFraudService(appRecord) {
+  return new Promise(async (resolve) => {
+    const signals = appRecord.signals || {};
+    const upiRating = (signals.upi && signals.upi.rating) || 50;
+    const mobileScore = (signals.mobile && signals.mobile.rating) || 50;
+    const geoScore = (signals.geo && signals.geo.rating) || 50;
+    const merchantDiv = (signals.merchantDiversity && signals.merchantDiversity.rating) || 50;
+    const failedTx = (signals.failedTx && signals.failedTx.rating) || 50;
+    const loanAmount = appRecord.loanAmount || 50000;
+
+    // Map SahayCredit signals to approximate IEEE-CIS-style features
+    const features = {
+      TransactionAmt: loanAmount,
+      card1: Math.round(mobileScore * 100),
+      card2: Math.round(geoScore * 5),
+      addr1: Math.round(geoScore * 3),
+      dist1: 100 - merchantDiv,
+      C1: Math.round(upiRating / 10),
+      C2: Math.round(failedTx / 10),
+      C13: Math.round(upiRating / 5),
+      C14: Math.round(mobileScore / 10),
+      D1: Math.round((100 - failedTx) / 10),
+      D15: Math.round(merchantDiv / 10)
+    };
+
+    const parsed = await mlServiceRequest('/fraud/score', { features });
+    if (parsed && parsed.fraud_score !== undefined) {
+      resolve({
+        mlFraudScore: parsed.fraud_score,
+        mlFraudRisk: parsed.risk_category,
+        mlFraudReasonCodes: parsed.reason_codes || []
+      });
+    } else {
+      resolve(null);
+    }
   });
 }
 
 // ── Applications API with Fraud Detection ───────────────────────────────────
 app.get('/api/applications', async (req, res) => {
-  // Call Python ML service for all applications in parallel (2s timeout, graceful fallback)
+  // Call Python ML service for all applications in parallel (5s timeout, graceful fallback)
   const mlResults = await Promise.all(applications.map(a => callMlScoringService(a)));
+  const mlFraudResults = await Promise.all(applications.map(a => callMlFraudService(a)));
 
   const enhancedApps = applications.map((appRecord, idx) => {
     // Run fraud analysis using the new fraud module
@@ -437,11 +510,15 @@ app.get('/api/applications', async (req, res) => {
       compositeBreakdown,
       compositeWeights,
       sourceCount,
-      // ── Real ML score from Python fraud_credit_service ──
+      // ── Real ML scores from Python fraud_credit_service ──
       mlCreditScore: mlResults[idx] ? mlResults[idx].mlCreditScore : null,
       mlRiskLevel:   mlResults[idx] ? mlResults[idx].mlRiskLevel   : null,
       mlDefaultProb: mlResults[idx] ? mlResults[idx].mlDefaultProb : null,
-      mlReasonCodes: mlResults[idx] ? mlResults[idx].mlReasonCodes : null
+      mlReasonCodes: mlResults[idx] ? mlResults[idx].mlReasonCodes : null,
+      // ── ML Fraud Layer results ──
+      mlFraudScore:       mlFraudResults[idx] ? mlFraudResults[idx].mlFraudScore       : null,
+      mlFraudRisk:        mlFraudResults[idx] ? mlFraudResults[idx].mlFraudRisk        : null,
+      mlFraudReasonCodes: mlFraudResults[idx] ? mlFraudResults[idx].mlFraudReasonCodes : null
     };
   });
   res.json({
@@ -737,7 +814,7 @@ app.post('/api/score', async (req, res) => {
       }
     });
 
-    // Attach ML result to both the response and the stored application record
+    // Attach ML credit result to both the response and the stored application record
     if (mlResult) {
       extendedResult.mlCreditScore = mlResult.mlCreditScore;
       extendedResult.mlRiskLevel   = mlResult.mlRiskLevel;
@@ -745,14 +822,39 @@ app.post('/api/score', async (req, res) => {
       extendedResult.mlReasonCodes = mlResult.mlReasonCodes;
     }
 
+    // ── Call ML Fraud Service for this borrower ──────────────────────────────
+    const mlFraudResult = await callMlFraudService({
+      loanAmount: isMSME ? 150000 : 35000,
+      signals: {
+        upi:               { rating: 75 },
+        mobile:            { rating: 75 },
+        geo:               { rating: 85 },
+        merchantDiversity: { rating: 60 },
+        failedTx:          { rating: 100 }
+      }
+    });
+
+    if (mlFraudResult) {
+      extendedResult.mlFraudScore       = mlFraudResult.mlFraudScore;
+      extendedResult.mlFraudRisk        = mlFraudResult.mlFraudRisk;
+      extendedResult.mlFraudReasonCodes = mlFraudResult.mlFraudReasonCodes;
+    }
+
     // Update the stored application with ML fields too (for lender dashboard)
     if (borrowerId) {
       const idx = applications.findIndex(a => a.id === borrowerId);
-      if (idx >= 0 && mlResult) {
-        applications[idx].mlCreditScore = mlResult.mlCreditScore;
-        applications[idx].mlRiskLevel   = mlResult.mlRiskLevel;
-        applications[idx].mlDefaultProb = mlResult.mlDefaultProb;
-        applications[idx].mlReasonCodes = mlResult.mlReasonCodes;
+      if (idx >= 0) {
+        if (mlResult) {
+          applications[idx].mlCreditScore = mlResult.mlCreditScore;
+          applications[idx].mlRiskLevel   = mlResult.mlRiskLevel;
+          applications[idx].mlDefaultProb = mlResult.mlDefaultProb;
+          applications[idx].mlReasonCodes = mlResult.mlReasonCodes;
+        }
+        if (mlFraudResult) {
+          applications[idx].mlFraudScore       = mlFraudResult.mlFraudScore;
+          applications[idx].mlFraudRisk        = mlFraudResult.mlFraudRisk;
+          applications[idx].mlFraudReasonCodes = mlFraudResult.mlFraudReasonCodes;
+        }
       }
     }
 
