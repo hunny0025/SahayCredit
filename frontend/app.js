@@ -801,13 +801,10 @@ function bindEvents() {
     if (mobileOnboardingBtn) mobileOnboardingBtn.addEventListener('click', closeHub);
   }
 
-  // Welcome Screen -> Start (Proceed to Bureau Gate first)
+  // Welcome Screen -> Start (Proceed to Consent directly)
   dom.startBtn.addEventListener('click', () => {
-    navigateTo('bureau-gate-screen');
+    navigateTo('consent-screen');
   });
-
-  // Bureau Gate Screen — form validation and event binding
-  bindBureauGateEvents();
 
   // Consent Screen - Toggles
   dom.consentToggles.upi.addEventListener('change', (e) => {
@@ -1721,7 +1718,7 @@ async function submitAnswersToAPI() {
 }
 // Sync segmented progress bar
 function updateBorrowerProgress(screenId) {
-  const steps = ['landing-screen', 'welcome-screen', 'bureau-gate-screen', 'consent-screen', 'rbi-link-screen', 'ekyc-screen', 'credit-check-screen', 'quiz-screen', 'processing-screen', 'result-screen', 'shap-screen', 'comparison-screen', 'emi-planner-screen'];
+  const steps = ['landing-screen', 'welcome-screen', 'consent-screen', 'rbi-link-screen', 'ekyc-screen', 'credit-check-screen', 'quiz-screen', 'processing-screen', 'result-screen', 'shap-screen', 'comparison-screen', 'emi-planner-screen'];
   const currentIdx = steps.indexOf(screenId);
   
   // Note: There are only 5 progress segments in the DOM, so comparison/planner screens are treated as phase 5 completed (fully filled progress)
@@ -1741,7 +1738,6 @@ function updateBorrowerProgress(screenId) {
 const SCREEN_ALIASES = {
   landing:    'landing-screen',
   rbiLink:    'rbi-link-screen',
-  bureauGate: 'bureau-gate-screen',
   ekyc:       'ekyc-screen',
   creditCheck: 'credit-check-screen',
   emiPlanner: 'emi-planner-screen',
@@ -1790,9 +1786,7 @@ function renderScreen() {
   }
 
   // Apply specific logic on route activations
-  if (state.currentScreen === 'bureau-gate-screen') {
-    resetBureauGateUI();
-  } else if (state.currentScreen === 'rbi-link-screen') {
+  if (state.currentScreen === 'rbi-link-screen') {
     initRbiLinkingFlow();
   } else if (state.currentScreen === 'ekyc-screen') {
     // Reset to input step when entering eKYC screen
